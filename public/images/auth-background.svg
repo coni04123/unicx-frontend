@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1440" height="900" fill="#0F766E"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M0 900V0L1440 0V900H0ZM720 450C720 505.228 675.228 550 620 550C564.772 550 520 505.228 520 450C520 394.772 564.772 350 620 350C675.228 350 720 394.772 720 450Z" fill="#0E6B64"/>
+    <circle cx="720" cy="450" r="200" fill="#0D5F59" fill-opacity="0.8"/>
+    <circle cx="720" cy="450" r="150" fill="#0C544E" fill-opacity="0.6"/>
+    <circle cx="720" cy="450" r="100" fill="#0B4944" fill-opacity="0.4"/>
+    <circle cx="720" cy="450" r="50" fill="#0A3E39" fill-opacity="0.2"/>
+</svg>
+
+
+
+
+
+
+
+
+
+
