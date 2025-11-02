@@ -11,29 +11,18 @@ import {
   PlusIcon,
   UserIcon,
   EnvelopeIcon,
-  PhoneIcon,
   BuildingOfficeIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon,
   QrCodeIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   PencilIcon,
   TrashIcon,
   ArrowPathIcon,
-  ChevronLeftIcon,
+  ChevronLeftIcon, 
   ChevronRightIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
-  MapPinIcon,
-  ArrowDownTrayIcon,
   CheckIcon,
   UserGroupIcon,
-  ShieldCheckIcon,
-  ShieldExclamationIcon,
-  ExclamationTriangleIcon,
-  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 interface WhatsAppHealthStatus {
@@ -85,7 +74,13 @@ interface User {
 interface Entity {
   _id: string;
   name: string;
-  type: string;
+  type: 'entity' | 'company' | 'department' | 'custom' | string;
+  customEntityTypeId?: string;
+  customEntityType?: {
+    _id: string;
+    title: string;
+    color: string;
+  };
   path: string;
   parentId?: string;
   children?: Entity[];
@@ -520,20 +515,47 @@ export default function UserManagementPage() {
           )}
           {!hasChildren && <div className="w-5 mr-2" />}
           
-          <i className={`${getEntityIcon(entity.type)} mr-2 text-gray-600`}></i>
+          <div className="mr-2 flex-shrink-0">
+            {entity.type === 'custom' && entity.customEntityType ? (
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: entity.customEntityType.color }}
+              />
+            ) : entity.type === 'entity' ? (
+              <BuildingOfficeIcon className="w-4 h-4 text-primary-600" />
+            ) : entity.type === 'company' ? (
+              <BuildingOfficeIcon className="w-4 h-4 text-blue-600" />
+            ) : (
+              <UserGroupIcon className="w-4 h-4 text-green-600" />
+            )}
+          </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                 {entity.name}
               </span>
-              {/* {userCount > 0 && (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ml-2 ${
-                  isSelected ? 'bg-primary-200 text-primary-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {userCount}
+              {entity.type === 'custom' && entity.customEntityType ? (
+                <span 
+                  className="text-xs px-2 py-0.5 rounded ml-2"
+                  style={{ 
+                    backgroundColor: `${entity.customEntityType.color}20`,
+                    color: entity.customEntityType.color
+                  }}
+                >
+                  {entity.customEntityType.title}
                 </span>
-              )} */}
+              ) : (
+                <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
+                  entity.type === 'entity' 
+                    ? 'bg-primary-100 text-primary-700'
+                    : entity.type === 'company'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {entity.type}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -753,7 +775,12 @@ export default function UserManagementPage() {
           {!hasChildren && <div className="w-5 mr-2" />}
           
           <div className="mr-2 flex-shrink-0">
-            {entity.type === 'entity' ? (
+            {entity.type === 'custom' && entity.customEntityType ? (
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: entity.customEntityType.color }}
+              />
+            ) : entity.type === 'entity' ? (
               <BuildingOfficeIcon className="w-4 h-4 text-primary-600" />
             ) : entity.type === 'company' ? (
               <BuildingOfficeIcon className="w-4 h-4 text-blue-600" />
@@ -767,15 +794,27 @@ export default function UserManagementPage() {
               <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                 {entity.name}
               </span>
-              <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
-                entity.type === 'entity' 
-                  ? 'bg-primary-100 text-primary-700'
-                  : entity.type === 'company'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-green-100 text-green-700'
-              }`}>
-                {entity.type}
-              </span>
+              {entity.type === 'custom' && entity.customEntityType ? (
+                <span 
+                  className="text-xs px-2 py-0.5 rounded ml-2"
+                  style={{ 
+                    backgroundColor: `${entity.customEntityType.color}20`,
+                    color: entity.customEntityType.color
+                  }}
+                >
+                  {entity.customEntityType.title}
+                </span>
+              ) : (
+                <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
+                  entity.type === 'entity' 
+                    ? 'bg-primary-100 text-primary-700'
+                    : entity.type === 'company'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {entity.type}
+                </span>
+              )}
             </div>
           </div>
           
@@ -868,7 +907,7 @@ export default function UserManagementPage() {
                 }`}
               >
                 <UserIcon className={`inline-block w-5 h-5 mr-2 ${roleFilter === 'TenantAdmin' ? 'text-blue-500' : 'text-gray-400'}`} />
-                Tenant Admins
+                Managers
               </button>
               <button
                 onClick={() => updateRoleFilter('User')}
@@ -893,7 +932,7 @@ export default function UserManagementPage() {
                     entityId: '',
                     role: roleFilter === 'TenantAdmin' ? 'TenantAdmin' : 'User',
                   });
-                  setShowInviteModal(true);
+                  setShowInviteModal(true);           
                 }}
                 className={`inline-flex items-center px-4 py-2 text-sm text-white rounded-md transition-colors ${
                   roleFilter === 'TenantAdmin'
@@ -902,7 +941,7 @@ export default function UserManagementPage() {
                 }`}
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
-                {roleFilter === 'TenantAdmin' ? 'Create Tenant Admin' : 'Invite User'}
+                {roleFilter === 'TenantAdmin' ? 'Manager' : 'User'}
               </button>
             </div>
           </div>
@@ -1088,7 +1127,7 @@ export default function UserManagementPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {isViewingTenantAdmins ? 'Tenant Admin' : 'User'}
+                        {isViewingTenantAdmins ? 'Manager' : 'User'}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Email
@@ -1123,7 +1162,7 @@ export default function UserManagementPage() {
                       <tr>
                         <td colSpan={isViewingTenantAdmins ? 5 : 8} className="px-6 py-12 text-center text-gray-500">
                           <UserIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p>No {isViewingTenantAdmins ? 'tenant admins' : isViewingUsers ? 'users' : 'users'} found</p>
+                          <p>No {isViewingTenantAdmins ? 'managers' : isViewingUsers ? 'users' : 'users'} found</p>
                         </td>
                       </tr>
                     ) : (
@@ -1141,7 +1180,7 @@ export default function UserManagementPage() {
                                   {user.firstName} {user.lastName}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  {user.role === 'TenantAdmin' ? 'Tenant Admin' : user.role}
+                                  {user.role === 'TenantAdmin' ? 'Manager' : user.role}
                                 </div>
                               </div>
                             </div>
@@ -1343,7 +1382,7 @@ export default function UserManagementPage() {
             <div className="relative mx-auto p-5 border-0 w-[500px] shadow-xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  {inviteForm.role === 'TenantAdmin' ? 'Create Tenant Admin' : 'Invite User'}
+                  {inviteForm.role === 'TenantAdmin' ? 'Create Manager' : 'Invite User'}
                 </h3>
                 
                 {/* Error message inside modal */}

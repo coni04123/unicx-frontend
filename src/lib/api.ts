@@ -91,18 +91,34 @@ class ApiClient {
         headers,
       });
 
-      const data = await response.json();
+      // Check if response has content before parsing JSON
+      const contentType = response.headers.get('content-type');
+      const hasJsonContent = contentType && contentType.includes('application/json');
+      const text = await response.text();
+      
+      let data: any = null;
+      if (text && hasJsonContent) {
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          // If JSON parsing fails, try to return text or empty object
+          data = text || {};
+        }
+      } else if (text) {
+        // If there's text but not JSON, return it as a message
+        data = { message: text };
+      }
 
       if (!response.ok) {
         const error: ApiError = {
-          message: data.message || 'An error occurred',
+          message: data?.message || data?.error || 'An error occurred',
           statusCode: response.status,
-          error: data.error,
+          error: data?.error,
         };
         throw error;
       }
 
-      return data;
+      return data || {};
     } catch (error: any) {
       if (error.statusCode === 401 && this.refreshToken && !endpoint.includes('/auth/refresh')) {
         // Try to refresh token
@@ -120,9 +136,22 @@ class ApiClient {
             headers: retryHeaders,
           });
           
-          const retryData = await retryResponse.json();
+          const retryText = await retryResponse.text();
+          let retryData: any = {};
+          if (retryText) {
+            try {
+              retryData = JSON.parse(retryText);
+            } catch {
+              retryData = { message: retryText };
+            }
+          }
+          
           if (!retryResponse.ok) {
-            throw retryData;
+            throw {
+              message: retryData?.message || retryData?.error || 'An error occurred',
+              statusCode: retryResponse.status,
+              error: retryData?.error,
+            };
           }
           return retryData;
         } catch (refreshError) {
@@ -249,7 +278,8 @@ class ApiClient {
 
   async createEntity(data: {
     name: string;
-    type: 'entity' | 'company' | 'department';
+    type: 'entity' | 'company' | 'department' | 'custom';
+    customEntityTypeId?: string;
     parentId?: string;
     metadata?: Record<string, any>;
   }): Promise<any> {
@@ -258,7 +288,8 @@ class ApiClient {
 
   async updateEntity(id: string, data: {
     name?: string;
-    type?: 'entity' | 'company' | 'department';
+    type?: 'entity' | 'company' | 'department' | 'custom';
+    customEntityTypeId?: string;
     metadata?: Record<string, any>;
     isExpanded?: boolean;
   }): Promise<any> {
@@ -353,6 +384,28 @@ class ApiClient {
     password?: string;
   }): Promise<any> {
     return this.patch(`/users/${id}`, data);
+  }
+
+  async getProfile(): Promise<any> {
+    return this.get('/users/me');
+  }
+
+  async updateProfile(data: {
+    phoneNumber?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    password?: string;
+  }): Promise<any> {
+    return this.patch('/users/me', data);
+  }
+
+  async verifyEmail(token: string, userId: string): Promise<any> {
+    return this.post('/users/verify-email', { token, userId });
+  }
+
+  async resendEmailVerification(): Promise<any> {
+    return this.post('/users/resend-email-verification', {});
   }
 
   async updateUserRegistrationStatus(id: string, status: string): Promise<any> {
@@ -484,6 +537,24 @@ class ApiClient {
     return this.get('/whatsapp/conversations');
   }
 
+  async getConversationMessages(conversationId: string, filters?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    messages: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const params = new URLSearchParams();
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const queryString = params.toString();
+    return this.get(`/whatsapp/conversations/${encodeURIComponent(conversationId)}/messages${queryString ? `?${queryString}` : ''}`);
+  }
+
   // Dashboard APIs
   async getDashboardStats(): Promise<{
     entities: {
@@ -568,6 +639,33 @@ class ApiClient {
   // Entity collapse state
   async updateEntityExpanded(entityId: string, isExpanded: boolean): Promise<void> {
     return this.patch(`/entities/${entityId}`, { isExpanded });
+  }
+
+  // Entity Types APIs
+  async getEntityTypes(): Promise<any[]> {
+    return this.get('/entity-types');
+  }
+
+  async getEntityType(id: string): Promise<any> {
+    return this.get(`/entity-types/${id}`);
+  }
+
+  async createEntityType(data: {
+    title: string;
+    color: string;
+  }): Promise<any> {
+    return this.post('/entity-types', data);
+  }
+
+  async updateEntityType(id: string, data: {
+    title?: string;
+    color?: string;
+  }): Promise<any> {
+    return this.patch(`/entity-types/${id}`, data);
+  }
+
+  async deleteEntityType(id: string): Promise<any> {
+    return this.delete(`/entity-types/${id}`);
   }
 }
 

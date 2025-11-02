@@ -401,7 +401,12 @@ export default function CommunicationPage() {
           {!hasChildren && <div className="w-5 mr-2" />}
           
           <div className="mr-2 flex-shrink-0">
-            {entity.type === 'entity' ? (
+            {entity.type === 'custom' && entity.customEntityType ? (
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: entity.customEntityType.color }}
+              />
+            ) : entity.type === 'entity' ? (
               <BuildingOfficeIcon className="w-4 h-4 text-primary-600" />
             ) : entity.type === 'company' ? (
               <BuildingOfficeIcon className="w-4 h-4 text-blue-600" />
@@ -415,13 +420,36 @@ export default function CommunicationPage() {
               <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                 {entity.name}
               </span>
-              {messageCount > 0 && (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  isSelected ? 'bg-primary-200 text-primary-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {messageCount}
-                </span>
-              )}
+              <div className="flex items-center space-x-2">
+                {entity.type === 'custom' && entity.customEntityType ? (
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{ 
+                      backgroundColor: `${entity.customEntityType.color}20`,
+                      color: entity.customEntityType.color
+                    }}
+                  >
+                    {entity.customEntityType.title}
+                  </span>
+                ) : (
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    entity.type === 'entity' 
+                      ? 'bg-primary-100 text-primary-700'
+                      : entity.type === 'company'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {entity.type}
+                  </span>
+                )}
+                {messageCount > 0 && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    isSelected ? 'bg-primary-200 text-primary-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {messageCount}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

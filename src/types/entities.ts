@@ -1,7 +1,13 @@
 export interface Entity {
   _id: string;
   name: string;
-  type: string;
+  type: 'entity' | 'company' | 'department' | 'custom' | string;
+  customEntityTypeId?: string;
+  customEntityType?: {
+    _id: string;
+    title: string;
+    color: string;
+  };
   path: string;
   parentId?: string;
   level: number;

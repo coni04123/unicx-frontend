@@ -10,12 +10,14 @@ import {
   BuildingOfficeIcon,
   EnvelopeIcon,
   UsersIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolidIcon,
   BuildingOfficeIcon as BuildingSolidIcon,
   EnvelopeIcon as EnvelopeSolidIcon,
   UsersIcon as UsersSolidIcon,
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolidIcon,
 } from '@heroicons/react/24/solid';
 
 interface NavigationItem {
@@ -63,6 +65,13 @@ export default function Sidebar() {
       icon: EnvelopeIcon,
       iconSolid: EnvelopeSolidIcon,
       current: pathname.startsWith('/communication'),
+    },
+    {
+      name: t('messages'),
+      href: '/messages',
+      icon: ChatBubbleLeftRightIcon,
+      iconSolid: ChatBubbleLeftRightSolidIcon,
+      current: pathname.startsWith('/messages'),
     },
   ];
 

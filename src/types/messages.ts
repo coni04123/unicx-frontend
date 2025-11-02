@@ -27,6 +27,8 @@ export interface Message {
   whatsappMessageId: string;
   from: string;
   to: string;
+  fromPhoneNumber?: string;
+  toPhoneNumber?: string;
   userId?: string;
   type: MessageType;
   direction: MessageDirection;
@@ -75,6 +77,11 @@ export interface Message {
   isExternalNumber?: boolean;
   externalSenderName?: string;
   externalSenderPhone?: string;
+  // WhatsApp Contact Information
+  whatsappAvatarUrl?: string;
+  whatsappUsername?: string;
+  whatsappGroupName?: string;
+  isGroupMessage?: boolean;
   isStarred: boolean;
   isArchived: boolean;
   isActive: boolean;

@@ -233,7 +233,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <Menu as="div" className="relative">
               <Menu.Button className="flex items-center text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 hover:bg-gray-50 px-3 py-2 transition-colors duration-200">
                 <div className="flex items-center space-x-3">
-                  {/* User Info */}
                   <div className="text-left">
                     <div className="flex items-center space-x-2">
                       <p className="text-sm font-semibold text-gray-900">
@@ -265,7 +264,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 leaveTo="transform opacity-0 scale-95"
               >
                 <Menu.Items className="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-lg bg-white py-2 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  {/* User Info Header */}
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center space-x-3">
                       <div className={`p-2 rounded-lg ${getRoleColor(role).replace('text-', 'bg-').replace('bg-red-600', 'bg-red-100').replace('bg-orange-600', 'bg-orange-100').replace('bg-blue-600', 'bg-blue-100')}`}>
@@ -279,15 +277,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
                           }
                         </p>
                         <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${getRoleColor(role)}`}>
+                        {/* <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${getRoleColor(role)}`}>
                           {getRoleIcon(role)}
                           <span className="ml-1">{roleInfo.label}</span>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Menu Items */}
                   <Menu.Item>
                     {({ active }) => (
                       <a

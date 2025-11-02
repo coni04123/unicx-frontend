@@ -1,78 +1,168 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { api } from '@/lib/api';
 import {
   UserIcon,
   EnvelopeIcon,
-  PhoneIcon,
-  BuildingOfficeIcon,
-  LanguageIcon,
-  BellIcon,
-  ShieldCheckIcon,
   CheckIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+
+const getRoleDisplayName = (role: string): string => {
+  switch (role) {
+    case 'SystemAdmin':
+      return 'Administrator';
+    case 'TenantAdmin':
+      return 'Manager';
+    case 'User':
+      return 'User';
+    default:
+      return role;
+  }
+};
 
 export default function ProfilePage() {
   const t = useTranslation('profile');
   const tCommon = useTranslation('common');
-  const { user } = useAuth();
-  const { roleInfo } = usePermissions();
-  const { language, setLanguage, languages } = useLanguage();
+  const { user: authUser } = useAuth();
   
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    phoneNumber: user?.phoneNumber || '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
   });
 
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    whatsappNotifications: false,
-  });
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setIsLoading(true);
+      const profileData = await api.getProfile();
+      setProfile(profileData);
+      setFormData({
+        firstName: profileData.firstName || '',
+        lastName: profileData.lastName || '',
+        email: profileData.email || '',
+        phoneNumber: profileData.phoneNumber || '',
+      });
+    } catch (err: any) {
+      console.error('Error loading profile:', err);
+      setError(err.message || 'Failed to load profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
       setError('');
       
-      // TODO: API call to update user profile
-      // await api.updateUserProfile(user?.id, formData);
+      const updateData: any = {};
+      if (formData.firstName !== profile.firstName) {
+        updateData.firstName = formData.firstName;
+      }
+      if (formData.lastName !== profile.lastName) {
+        updateData.lastName = formData.lastName;
+      }
+      if (formData.phoneNumber !== profile.phoneNumber) {
+        updateData.phoneNumber = formData.phoneNumber;
+      }
+      if (formData.email !== profile.email) {
+        updateData.email = formData.email;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const updatedProfile = await api.updateProfile(updateData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update localStorage if email was changed and verified
+      if (updateData.email && !updatedProfile.pendingEmail && authUser) {
+        const updatedUser = {
+          ...authUser,
+          email: updatedProfile.email,
+          firstName: updatedProfile.firstName,
+          lastName: updatedProfile.lastName,
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+
+      setProfile(updatedProfile);
       
-      setSuccess(t('updatedSuccessfully'));
+      if (updateData.email && updatedProfile.pendingEmail) {
+        setSuccess('Profile updated! A verification email has been sent to your new email address. Please check your inbox and click the verification link.');
+      } else {
+        setSuccess('Profile updated successfully!');
+      }
+      
       setIsEditing(false);
-      
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
-      setError(err.message || tCommon('error'));
+      console.error('Error updating profile:', err);
+      setError(err.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleLanguageChange = (langCode: string) => {
-    setLanguage(langCode as any);
-    setSuccess(`Language changed to ${languages.find(l => l.code === langCode)?.name}`);
-    setTimeout(() => setSuccess(''), 3000);
+  const handleResendVerification = async () => {
+    try {
+      setIsResendingVerification(true);
+      setError('');
+      await api.resendEmailVerification();
+      setSuccess('Verification email sent successfully! Please check your inbox.');
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      console.error('Error resending verification:', err);
+      setError(err.message || 'Failed to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-error-600">Failed to load profile</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const hasPendingEmail = profile.pendingEmail && profile.pendingEmail !== profile.email;
 
   return (
     <DashboardLayout>
@@ -102,6 +192,33 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Pending Email Verification Notice */}
+        {hasPendingEmail && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-800">
+                  Email Verification Required
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  A verification email has been sent to <strong>{profile.pendingEmail}</strong>. 
+                  Please check your inbox and click the verification link to complete the email change.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                  className="mt-2"
+                >
+                  {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile Card */}
           <div className="lg:col-span-1">
@@ -116,12 +233,19 @@ export default function ProfilePage() {
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-foreground">
-                    {user?.firstName} {user?.lastName}
+                    {profile.firstName} {profile.lastName}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {hasPendingEmail ? profile.pendingEmail : profile.email}
+                    {hasPendingEmail && (
+                      <span className="ml-2 text-yellow-600">
+                        <ExclamationTriangleIcon className="h-4 w-4 inline" />
+                      </span>
+                    )}
+                  </p>
                   <div className="flex items-center justify-center space-x-2 mt-3">
-                    <Badge variant={roleInfo.badgeColor}>
-                      {user?.role}
+                    <Badge variant="secondary">
+                      {getRoleDisplayName(profile.role)}
                     </Badge>
                   </div>
                 </div>
@@ -153,11 +277,12 @@ export default function ProfilePage() {
                         onClick={() => {
                           setIsEditing(false);
                           setFormData({
-                            firstName: user?.firstName || '',
-                            lastName: user?.lastName || '',
-                            email: user?.email || '',
-                            phoneNumber: user?.phoneNumber || '',
+                            firstName: profile.firstName || '',
+                            lastName: profile.lastName || '',
+                            email: profile.email || '',
+                            phoneNumber: profile.phoneNumber || '',
                           });
+                          setError('');
                         }}
                       >
                         {tCommon('cancel')}
@@ -207,140 +332,17 @@ export default function ProfilePage() {
                       placeholder={tCommon('placeholder.email')}
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('role')}</label>
-                    <Input
-                      value={user?.role || tCommon('user')}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
+                  {hasPendingEmail && (
+                    <p className="text-xs text-yellow-600 mt-1">
+                      Current email: {profile.email}. Verification pending for: {profile.pendingEmail}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
-
-            {/* Language Preferences */}
-            {/* <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <LanguageIcon className="h-5 w-5 text-primary" />
-                  <CardTitle>{t('preferences')}</CardTitle>
-                </div>
-                <CardDescription>{t('selectLanguage')}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('language')}</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {languages.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => handleLanguageChange(lang.code)}
-                        className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
-                          language === lang.code
-                            ? 'border-primary bg-primary/5 shadow-md'
-                            : 'border-gray-200 hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="text-3xl">{lang.flag}</span>
-                          <div className="text-left">
-                            <p className="font-semibold text-sm">{lang.nativeName}</p>
-                            <p className="text-xs text-muted-foreground">{lang.name}</p>
-                          </div>
-                          {language === lang.code && (
-                            <CheckIcon className="h-5 w-5 text-primary ml-auto" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card> */}
-
-            {/* Notification Preferences */}
-            {/* <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <BellIcon className="h-5 w-5 text-primary" />
-                  <CardTitle>{t('notifications')}</CardTitle>
-                </div>
-                <CardDescription>Manage your notification preferences</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t('emailNotifications')}</p>
-                    <p className="text-sm text-muted-foreground">{t('receiveEmailNotifications')}</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preferences.emailNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, emailNotifications: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t('pushNotifications')}</p>
-                    <p className="text-sm text-muted-foreground">{t('receivePushNotifications')}</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preferences.pushNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, pushNotifications: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t('whatsappNotifications')}</p>
-                    <p className="text-sm text-muted-foreground">{t('receiveWhatsappNotifications')}</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={preferences.whatsappNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, whatsappNotifications: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
-                </div>
-              </CardContent>
-            </Card> */}
-
-            {/* Security */}
-            {/* <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <ShieldCheckIcon className="h-5 w-5 text-primary" />
-                  <CardTitle>{t('security')}</CardTitle>
-                </div>
-                <CardDescription>Update your password and security settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full md:w-auto">
-                  {t('changePassword')}
-                </Button>
-              </CardContent>
-            </Card> */}
           </div>
         </div>
       </div>
     </DashboardLayout>
   );
 }
-
