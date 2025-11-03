@@ -32,4 +32,4 @@ jobs:
       with:
         app-name: 'app-unicx2'   # your App Service name
         images: |
-          $IMAGE_NAME:latest
+          unicxacr.azurecr.io/unicx-frontend:${{ github.run_id }}
