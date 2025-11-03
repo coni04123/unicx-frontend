@@ -1,0 +1,35 @@
+name: Build and Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build and push Docker image
+      run: az acr login --name unicxacr
+
+    - run: |
+        IMAGE_NAME=unicxacr.azurecr.io/unicx-frontend
+        TAG_ID=${{ github.run_id }}
+        docker build -t $IMAGE_NAME:$TAG_ID -t $IMAGE_NAME:latest .
+        docker push $IMAGE_NAME:$TAG_ID
+        docker push $IMAGE_NAME:latest
+
+    - uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'app-unicx2'   # your App Service name
+        images: |
+          $IMAGE_NAME:latest

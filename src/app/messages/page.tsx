@@ -27,7 +27,8 @@ interface Contact {
 export default function MessagesPage() {
   const { user } = useAuth();
   const [fromContacts, setFromContacts] = useState<Contact[]>([]);
-  const [toContacts, setToContacts] = useState<Contact[]>([]);
+  const [allToContacts, setAllToContacts] = useState<Contact[]>([]);
+  const [filteredToContacts, setFilteredToContacts] = useState<Contact[]>([]);
   const [selectedFromContact, setSelectedFromContact] = useState<Contact | null>(null);
   const [selectedToContact, setSelectedToContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -35,6 +36,7 @@ export default function MessagesPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [fromSearchQuery, setFromSearchQuery] = useState('');
   const [toSearchQuery, setToSearchQuery] = useState('');
+  const [conversationMap, setConversationMap] = useState<Map<string, Set<string>>>(new Map());
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,6 +45,26 @@ export default function MessagesPage() {
   useEffect(() => {
     loadContacts();
   }, []);
+
+  useEffect(() => {
+    if (selectedFromContact) {
+      // Filter TO contacts to show only those that have conversations with selected FROM contact
+      const conversationsWithFrom = conversationMap.get(selectedFromContact.phoneNumber) || new Set();
+      const filtered = allToContacts.filter(contact => 
+        conversationsWithFrom.has(contact.phoneNumber)
+      );
+      setFilteredToContacts(filtered);
+      // Reset selected TO contact if it's not in the filtered list
+      if (selectedToContact && !filtered.find(c => c.phoneNumber === selectedToContact?.phoneNumber)) {
+        setSelectedToContact(null);
+        setMessages([]);
+      }
+    } else {
+      setFilteredToContacts([]);
+      setSelectedToContact(null);
+      setMessages([]);
+    }
+  }, [selectedFromContact, allToContacts, conversationMap]);
 
   useEffect(() => {
     if (selectedFromContact && selectedToContact) {
@@ -66,6 +88,8 @@ export default function MessagesPage() {
       const fromMap = new Map<string, Contact>();
       // Group by toPhoneNumber
       const toMap = new Map<string, Contact>();
+      // Map to track which contacts have conversations with each other
+      const convMap = new Map<string, Set<string>>();
 
       data.messages.forEach((msg: Message) => {
         // Process FROM contacts
@@ -85,9 +109,6 @@ export default function MessagesPage() {
           if (new Date(msg.sentAt) > new Date(existing.lastMessageAt)) {
             existing.lastMessageAt = msg.sentAt;
           }
-          if (msg.direction === MessageDirection.INBOUND && msg.status !== 'read') {
-            existing.unreadCount++;
-          }
           
           fromMap.set(fromPhone, existing);
         }
@@ -106,11 +127,16 @@ export default function MessagesPage() {
           if (new Date(msg.sentAt) > new Date(existing.lastMessageAt)) {
             existing.lastMessageAt = msg.sentAt;
           }
-          if (msg.direction === MessageDirection.OUTBOUND && msg.status !== 'read') {
-            existing.unreadCount++;
-          }
           
           toMap.set(toPhone, existing);
+        }
+
+        // Track conversations between FROM and TO contacts
+        if (fromPhone && toPhone) {
+          if (!convMap.has(fromPhone)) {
+            convMap.set(fromPhone, new Set());
+          }
+          convMap.get(fromPhone)!.add(toPhone);
         }
       });
 
@@ -123,7 +149,8 @@ export default function MessagesPage() {
       );
 
       setFromContacts(fromContactsArray);
-      setToContacts(toContactsArray);
+      setAllToContacts(toContactsArray);
+      setConversationMap(convMap);
     } catch (error: any) {
       console.error('Error loading contacts:', error);
     } finally {
@@ -193,6 +220,18 @@ export default function MessagesPage() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  // Generate consistent color based on phone number
+  const getAvatarColor = (phoneNumber: string) => {
+    // Simple hash function to generate consistent color
+    let hash = 0;
+    for (let i = 0; i < phoneNumber.length; i++) {
+      hash = phoneNumber.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // Generate color in HSL format for better consistency
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 50%)`;
+  };
+
   const handleAudioPlay = (messageId: string) => {
     const audio = audioRefs.current.get(messageId);
     if (!audio) return;
@@ -229,7 +268,7 @@ export default function MessagesPage() {
     );
   });
 
-  const filteredToContacts = toContacts.filter(contact => {
+  const filteredToContactsSearch = filteredToContacts.filter(contact => {
     if (!toSearchQuery) return true;
     const query = toSearchQuery.toLowerCase();
     return (
@@ -267,16 +306,11 @@ export default function MessagesPage() {
               contact.avatarUrl ? 'hidden' : ''
             }`}
             style={{
-              backgroundColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+              backgroundColor: getAvatarColor(contact.phoneNumber),
             }}
           >
             {getInitials(contact.displayName)}
           </div>
-          {contact.unreadCount > 0 && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
-              {contact.unreadCount}
-            </div>
-          )}
         </div>
 
         {/* Contact Info */}
@@ -377,8 +411,14 @@ export default function MessagesPage() {
               <div className="flex items-center justify-center h-64">
                 <p className="text-gray-500 text-sm">No contacts found</p>
               </div>
+            ) : filteredToContactsSearch.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500 text-sm">
+                  {selectedFromContact ? 'No conversations found' : 'Select a FROM contact first'}
+                </p>
+              </div>
             ) : (
-              filteredToContacts.map((contact) =>
+              filteredToContactsSearch.map((contact) =>
                 renderContactItem(
                   contact,
                   selectedToContact?.phoneNumber === contact.phoneNumber,
@@ -411,7 +451,7 @@ export default function MessagesPage() {
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs"
                         style={{
-                          backgroundColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+                          backgroundColor: getAvatarColor(selectedFromContact.phoneNumber),
                         }}
                       >
                         {getInitials(selectedFromContact.displayName)}
@@ -432,7 +472,7 @@ export default function MessagesPage() {
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs"
                         style={{
-                          backgroundColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+                          backgroundColor: getAvatarColor(selectedToContact.phoneNumber),
                         }}
                       >
                         {getInitials(selectedToContact.displayName)}
