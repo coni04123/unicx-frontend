@@ -886,7 +886,7 @@ export default function CommunicationPage() {
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm font-semibold text-gray-900">
                                     {message.isExternalNumber 
-                                      ? (message.externalSenderName || message.from)
+                                      ? (message.from)
                                       : (senderInfo ? `${senderInfo.firstName} ${senderInfo.lastName}` : message.from)
                                     }
                                   </span>
