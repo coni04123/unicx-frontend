@@ -277,13 +277,13 @@ export const mockPermissions: Permission[] = [
 export const mockUserRoles: UserRole[] = [
   {
     id: 'role-system-admin',
-    name: 'System Administrator',
+    name: 'Administrator',
     description: 'Full system access across all tenants and system management',
     permissions: mockPermissions,
   },
   {
     id: 'role-tenant-admin',
-    name: 'Tenant Administrator',
+    name: 'Manageristrator',
     description: 'Manages tenant and sub-tenants (companies/departments), monitors E164 users',
     permissions: mockPermissions.slice(0, 4),
   },

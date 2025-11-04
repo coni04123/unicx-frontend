@@ -122,7 +122,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
     manageIntegrations: true,
   },
   
-  // TenantAdmin: Tenant administrator who can manage sub-tenants (companies/departments) and monitor E164 users
+  // TenantAdmin: Manageristrator who can manage sub-tenants (companies/departments) and monitor E164 users
   TenantAdmin: {
     // Dashboard
     viewDashboard: true,
@@ -293,13 +293,13 @@ export function canAccessRoute(role: UserRole, route: string): boolean {
 export function getRoleInfo(role: UserRole) {
   const roleInfo = {
     SystemAdmin: {
-      label: 'System Administrator',
+      label: 'Administrator',
       description: 'Full system access across all tenants and system management',
       color: 'bg-error-500 text-white',
       badgeColor: 'destructive' as const,
     },
     TenantAdmin: {
-      label: 'Tenant Administrator',
+      label: 'Manageristrator',
       description: 'Manages tenant and sub-tenants (companies/departments), monitors E164 users',
       color: 'bg-warning-500 text-white',
       badgeColor: 'secondary' as const,

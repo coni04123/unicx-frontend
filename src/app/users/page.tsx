@@ -161,7 +161,7 @@ export default function UserManagementPage() {
   const [whatsappFilter, setWhatsappFilter] = useState<string>('');
   const [healthCheckLoading, setHealthCheckLoading] = useState<string | null>(null);
   
-  // Determine if we're viewing tenant admins only
+  // Determine if we're viewing Managers only
   const isViewingTenantAdmins = roleFilter === 'TenantAdmin';
   const isViewingUsers = roleFilter === 'User';
 
@@ -530,32 +530,34 @@ export default function UserManagementPage() {
             )}
           </div>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 group">
             <div className="flex items-center justify-between">
               <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                 {entity.name}
               </span>
-              {entity.type === 'custom' && entity.customEntityType ? (
-                <span 
-                  className="text-xs px-2 py-0.5 rounded ml-2"
-                  style={{ 
-                    backgroundColor: `${entity.customEntityType.color}20`,
-                    color: entity.customEntityType.color
-                  }}
-                >
-                  {entity.customEntityType.title}
-                </span>
-              ) : (
-                <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
-                  entity.type === 'entity' 
-                    ? 'bg-primary-100 text-primary-700'
-                    : entity.type === 'company'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-green-100 text-green-700'
-                }`}>
-                  {entity.type}
-                </span>
-              )}
+              {/* <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {entity.type === 'custom' && entity.customEntityType ? (
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded ml-2"
+                    style={{ 
+                      backgroundColor: `${entity.customEntityType.color}20`,
+                      color: entity.customEntityType.color
+                    }}
+                  >
+                    {entity.customEntityType.title}
+                  </span>
+                ) : (
+                  <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
+                    entity.type === 'entity' 
+                      ? 'bg-primary-100 text-primary-700'
+                      : entity.type === 'company'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {entity.type}
+                  </span>
+                )}
+              </div> */}
             </div>
           </div>
         </div>
@@ -572,7 +574,7 @@ export default function UserManagementPage() {
   const handleInviteUser = async () => {
     // Validate required fields based on role
     if (inviteForm.role === 'TenantAdmin') {
-      // Tenant Admins don't need phone number
+      // Managers don't need phone number
       if (!inviteForm.firstName || !inviteForm.lastName || !inviteForm.email || !inviteForm.entityId) {
         setError('Please fill in all required fields');
         return;
@@ -789,32 +791,34 @@ export default function UserManagementPage() {
             )}
           </div>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 group">
             <div className="flex items-center justify-between">
               <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                 {entity.name}
               </span>
-              {entity.type === 'custom' && entity.customEntityType ? (
-                <span 
-                  className="text-xs px-2 py-0.5 rounded ml-2"
-                  style={{ 
-                    backgroundColor: `${entity.customEntityType.color}20`,
-                    color: entity.customEntityType.color
-                  }}
-                >
-                  {entity.customEntityType.title}
-                </span>
-              ) : (
-                <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
-                  entity.type === 'entity' 
-                    ? 'bg-primary-100 text-primary-700'
-                    : entity.type === 'company'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-green-100 text-green-700'
-                }`}>
-                  {entity.type}
-                </span>
-              )}
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {entity.type === 'custom' && entity.customEntityType ? (
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded ml-2"
+                    style={{ 
+                      backgroundColor: `${entity.customEntityType.color}20`,
+                      color: entity.customEntityType.color
+                    }}
+                  >
+                    {entity.customEntityType.title}
+                  </span>
+                ) : (
+                  <span className={`text-xs px-2 py-0.5 rounded ml-2 ${
+                    entity.type === 'entity' 
+                      ? 'bg-primary-100 text-primary-700'
+                      : entity.type === 'company'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {entity.type}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           
@@ -1078,7 +1082,7 @@ export default function UserManagementPage() {
                     </select>
                   </div> */}
 
-                  {/* WhatsApp Status Filter - Only show for Users, not Tenant Admins */}
+                  {/* WhatsApp Status Filter - Only show for Users, not Managers */}
                   {!isViewingTenantAdmins && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1132,7 +1136,7 @@ export default function UserManagementPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Email
                       </th>
-                      {/* Show Contact only for Users, not Tenant Admins */}
+                      {/* Show Contact only for Users, not Managers */}
                       {!isViewingTenantAdmins && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Contact
@@ -1141,7 +1145,7 @@ export default function UserManagementPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      {/* Show WhatsApp & QR Code only for Users, not Tenant Admins */}
+                      {/* Show WhatsApp & QR Code only for Users, not Managers */}
                       {!isViewingTenantAdmins && (
                         <>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1188,7 +1192,7 @@ export default function UserManagementPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{user.email}</div>
                           </td>
-                          {/* Show Contact only for Users, not Tenant Admins */}
+                          {/* Show Contact only for Users, not Managers */}
                           {!isViewingTenantAdmins && (
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-500">{user.phoneNumber || 'N/A'}</div>
@@ -1209,7 +1213,7 @@ export default function UserManagementPage() {
                               )}
                             </div>
                           </td>
-                          {/* Show WhatsApp & QR Code only for Users, not Tenant Admins */}
+                          {/* Show WhatsApp & QR Code only for Users, not Managers */}
                           {!isViewingTenantAdmins && (
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -1433,7 +1437,7 @@ export default function UserManagementPage() {
                     />
                   </div>
 
-                  {/* Phone Number only for Users, not Tenant Admins */}
+                  {/* Phone Number only for Users, not Managers */}
                   {inviteForm.role !== 'TenantAdmin' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1488,7 +1492,7 @@ export default function UserManagementPage() {
                     }`}>
                       {inviteForm.role === 'TenantAdmin' 
                         ? (<>
-                            Tenant Admin will receive invitation via email with login credentials.
+                            Manager will receive invitation via email with login credentials.
                           </>) 
                         : (<>
                             User will receive invitation with QR code via email for WhatsApp connection setup.

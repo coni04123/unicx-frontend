@@ -15,6 +15,8 @@ import {
   PencilIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
+  ExclamationTriangleIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 
 interface CustomEntityType {
@@ -91,7 +93,7 @@ export default function EntityStructurePage() {
   });
   const [createEntityTypeForm, setCreateEntityTypeForm] = useState<CreateEntityTypeForm>({
     title: '',
-    color: '#3B82F6',
+    color: '#14a800',
   });
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -434,7 +436,7 @@ export default function EntityStructurePage() {
       await api.createEntityType(createEntityTypeForm);
       setSuccess(`Entity type "${createEntityTypeForm.title}" created successfully!`);
       await loadEntityTypes();
-      setCreateEntityTypeForm({ title: '', color: '#3B82F6' });
+      setCreateEntityTypeForm({ title: '', color: '#14a800' });
       setShowCreateEntityTypeModal(false);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
@@ -474,7 +476,7 @@ export default function EntityStructurePage() {
       setSuccess(`Entity type "${createEntityTypeForm.title}" updated successfully!`);
       await loadEntityTypes();
       await loadEntities(); // Refresh entity structure to reflect updated entity type
-      setCreateEntityTypeForm({ title: '', color: '#3B82F6' });
+      setCreateEntityTypeForm({ title: '', color: '#14a800' });
       setEditingEntityTypeId(null);
       setShowEditEntityTypeModal(false);
       setTimeout(() => setSuccess(''), 3000);
@@ -907,18 +909,26 @@ export default function EntityStructurePage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <select
-                          value={createForm.customEntityTypeId || ''}
-                          onChange={(e) => setCreateForm({ ...createForm, customEntityTypeId: e.target.value })}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="">Select custom type...</option>
-                          {entityTypes.map((et) => (
-                            <option key={et._id} value={et._id}>
-                              {et.title}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex-1 relative">
+                          <select
+                            value={createForm.customEntityTypeId || ''}
+                            onChange={(e) => setCreateForm({ ...createForm, customEntityTypeId: e.target.value })}
+                            className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
+                          >
+                            <option value="">Select custom type...</option>
+                            {entityTypes.map((et) => (
+                              <option key={et._id} value={et._id}>
+                                {et.title}
+                              </option>
+                            ))}
+                          </select>
+                          {createForm.customEntityTypeId && (
+                            <div 
+                              className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-sm pointer-events-none"
+                              style={{ backgroundColor: entityTypes.find(et => et._id === createForm.customEntityTypeId)?.color || '#14a800' }}
+                            />
+                          )}
+                        </div>
                         {createForm.customEntityTypeId && (
                           <button
                             type="button"
@@ -1046,18 +1056,26 @@ export default function EntityStructurePage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={editForm.customEntityTypeId || ''}
-                      onChange={(e) => setEditForm({ ...editForm, customEntityTypeId: e.target.value })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">Select custom type...</option>
-                      {entityTypes.map((et) => (
-                        <option key={et._id} value={et._id}>
-                          {et.title}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex-1 relative">
+                      <select
+                        value={editForm.customEntityTypeId || ''}
+                        onChange={(e) => setEditForm({ ...editForm, customEntityTypeId: e.target.value })}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
+                      >
+                        <option value="">Select custom type...</option>
+                        {entityTypes.map((et) => (
+                          <option key={et._id} value={et._id}>
+                            {et.title}
+                          </option>
+                        ))}
+                      </select>
+                      {editForm.customEntityTypeId && (
+                        <div 
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-sm pointer-events-none"
+                          style={{ backgroundColor: entityTypes.find(et => et._id === editForm.customEntityTypeId)?.color || '#14a800' }}
+                        />
+                      )}
+                    </div>
                     {editForm.customEntityTypeId && (
                       <button
                         type="button"
@@ -1155,170 +1173,285 @@ export default function EntityStructurePage() {
            </div>
          )}
 
-         {/* Create Entity Type Modal */}
-         {showCreateEntityTypeModal && (
-           <div className="fixed top-0 left-0 right-0 bottom-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-screen w-screen z-[9999] flex items-start justify-center pt-20">
-             <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white mb-20">
-               <div className="mt-3">
-                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                   Create Custom Entity Type
-                 </h3>
-                 
-                 {error && (
-                   <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-                     {error}
-                   </div>
-                 )}
-                 
-                 <div className="space-y-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Title *
-                     </label>
-                     <input
-                       type="text"
-                       value={createEntityTypeForm.title}
-                       onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
-                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                       placeholder="e.g., Team, Division, Region"
-                     />
-                   </div>
+        {/* Create Entity Type Modal */}
+        {showCreateEntityTypeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                      <BuildingOfficeIcon className="w-6 h-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Create Custom Entity Type
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        Define a new entity classification
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowCreateEntityTypeModal(false);
+                      setError('');
+                      setCreateEntityTypeForm({ title: '', color: '#14a800' });
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
 
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Color *
-                     </label>
-                     <div className="flex items-center space-x-2">
-                       <input
-                         type="color"
-                         value={createEntityTypeForm.color}
-                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
-                         className="h-10 w-20 border border-gray-300 rounded-md cursor-pointer"
-                       />
-                       <input
-                         type="text"
-                         value={createEntityTypeForm.color}
-                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
-                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                         placeholder="#3B82F6"
-                       />
-                     </div>
-                   </div>
-                 </div>
+              {/* Content */}
+              <div className="px-6 py-6">
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-md">
+                    <div className="flex items-center">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
+                      <p className="text-sm text-red-700 font-medium">{error}</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {/* Title Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={createEntityTypeForm.title}
+                      onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
+                      placeholder="e.g., Team, Division, Region"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      This name will appear when selecting entity types
+                    </p>
+                  </div>
 
-                 <div className="flex items-center justify-end space-x-3 mt-6">
-                   <button
-                     onClick={() => {
-                       setShowCreateEntityTypeModal(false);
-                       setError('');
-                       setCreateEntityTypeForm({ title: '', color: '#3B82F6' });
-                     }}
-                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                   >
-                     Cancel
-                   </button>
-                   <button
-                     onClick={handleCreateEntityType}
-                     disabled={isCreatingEntityType}
-                     className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center"
-                   >
-                     {isCreatingEntityType ? (
-                       <>
-                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                         Creating...
-                       </>
-                     ) : (
-                       'Create Type'
-                     )}
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )}
+                  {/* Color Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Color <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <input
+                          type="color"
+                          value={createEntityTypeForm.color}
+                          onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
+                          className="h-12 w-16 border-2 border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        />
+                        <div 
+                          className="absolute inset-0 rounded-lg border-2 border-white shadow-sm pointer-events-none"
+                          style={{ backgroundColor: createEntityTypeForm.color }}
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={createEntityTypeForm.color}
+                        onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
+                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all font-mono text-sm"
+                        placeholder="#14a800"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center space-x-2">
+                      <div className="flex-1 h-8 rounded-md border-2 border-gray-200 overflow-hidden">
+                        <div 
+                          className="w-full h-full flex items-center justify-center text-xs font-medium text-white"
+                          style={{ backgroundColor: createEntityTypeForm.color }}
+                        >
+                          Preview
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      This color will be used for entity type indicators
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-         {/* Edit Entity Type Modal */}
-         {showEditEntityTypeModal && (
-           <div className="fixed top-0 left-0 right-0 bottom-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-screen w-screen z-[9999] flex items-start justify-center pt-20">
-             <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white mb-20">
-               <div className="mt-3">
-                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                   Edit Custom Entity Type
-                 </h3>
-                 
-                 {error && (
-                   <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-                     {error}
-                   </div>
-                 )}
-                 
-                 <div className="space-y-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Title *
-                     </label>
-                     <input
-                       type="text"
-                       value={createEntityTypeForm.title}
-                       onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
-                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                       placeholder="e.g., Team, Division, Region"
-                     />
-                   </div>
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowCreateEntityTypeModal(false);
+                    setError('');
+                    setCreateEntityTypeForm({ title: '', color: '#14a800' });
+                  }}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateEntityType}
+                  disabled={isCreatingEntityType}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm hover:shadow-md"
+                >
+                  {isCreatingEntityType ? (
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="w-4 h-4" />
+                      <span>Create Type</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Color *
-                     </label>
-                     <div className="flex items-center space-x-2">
-                       <input
-                         type="color"
-                         value={createEntityTypeForm.color}
-                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
-                         className="h-10 w-20 border border-gray-300 rounded-md cursor-pointer"
-                       />
-                       <input
-                         type="text"
-                         value={createEntityTypeForm.color}
-                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
-                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                         placeholder="#3B82F6"
-                       />
-                     </div>
-                   </div>
-                 </div>
+        {/* Edit Entity Type Modal */}
+        {showEditEntityTypeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                      <BuildingOfficeIcon className="w-6 h-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Edit Custom Entity Type
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        Update entity type details
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowEditEntityTypeModal(false);
+                      setError('');
+                      setCreateEntityTypeForm({ title: '', color: '#14a800' });
+                      setEditingEntityTypeId(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
 
-                 <div className="flex items-center justify-end space-x-3 mt-6">
-                   <button
-                     onClick={() => {
-                       setShowEditEntityTypeModal(false);
-                       setError('');
-                       setCreateEntityTypeForm({ title: '', color: '#3B82F6' });
-                       setEditingEntityTypeId(null);
-                     }}
-                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                   >
-                     Cancel
-                   </button>
-                   <button
-                     onClick={handleEditEntityType}
-                     disabled={isEditingEntityType}
-                     className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center"
-                   >
-                     {isEditingEntityType ? (
-                       <>
-                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                         Updating...
-                       </>
-                     ) : (
-                       'Update Type'
-                     )}
-                   </button>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )}
+              {/* Content */}
+              <div className="px-6 py-6">
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-md">
+                    <div className="flex items-center">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
+                      <p className="text-sm text-red-700 font-medium">{error}</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {/* Title Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={createEntityTypeForm.title}
+                      onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
+                      placeholder="e.g., Team, Division, Region"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      This name will appear when selecting entity types
+                    </p>
+                  </div>
+
+                  {/* Color Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Color <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <input
+                          type="color"
+                          value={createEntityTypeForm.color}
+                          onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
+                          className="h-12 w-16 border-2 border-gray-200 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        />
+                        <div 
+                          className="absolute inset-0 rounded-lg border-2 border-white shadow-sm pointer-events-none"
+                          style={{ backgroundColor: createEntityTypeForm.color }}
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={createEntityTypeForm.color}
+                        onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
+                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all font-mono text-sm"
+                        placeholder="#14a800"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center space-x-2">
+                      <div className="flex-1 h-8 rounded-md border-2 border-gray-200 overflow-hidden">
+                        <div 
+                          className="w-full h-full flex items-center justify-center text-xs font-medium text-white"
+                          style={{ backgroundColor: createEntityTypeForm.color }}
+                        >
+                          Preview
+                        </div>
+                      </div>
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      This color will be used for entity type indicators
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowEditEntityTypeModal(false);
+                    setError('');
+                    setCreateEntityTypeForm({ title: '', color: '#14a800' });
+                    setEditingEntityTypeId(null);
+                  }}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditEntityType}
+                  disabled={isEditingEntityType}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-sm hover:shadow-md"
+                >
+                  {isEditingEntityType ? (
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="w-4 h-4" />
+                      <span>Update Type</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
        </div>
      </DashboardLayout>
    );

@@ -110,13 +110,13 @@ export interface ChatMessage {
 export const accessLevels: AccessLevel[] = [
   {
     level: 'admin',
-    description: 'System administrators with full system access across all tenants',
+    description: 'Administrators with full system access across all tenants',
     maxMembers: 25,
     permissions: ['manage_all_tenants', 'manage_system', 'view_all_messages', 'system_config', 'user_management']
   },
   {
     level: 'entity',
-    description: 'Tenant administrators who manage sub-tenants (companies/departments) and monitor E164 users',
+    description: 'Manageristrators who manage sub-tenants (companies/departments) and monitor E164 users',
     maxMembers: -1, // Unlimited
     permissions: ['manage_sub_tenants', 'manage_entity_users', 'monitor_e164_users', 'view_entity_messages', 'send_invitations']
   },

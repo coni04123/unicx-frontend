@@ -60,19 +60,19 @@ export default function Sidebar() {
       current: pathname.startsWith('/users'),
     },
     {
-      name: t('communications'),
+      name: t('monitoring'),
       href: '/communication',
       icon: EnvelopeIcon,
       iconSolid: EnvelopeSolidIcon,
       current: pathname.startsWith('/communication'),
     },
-    {
-      name: t('messages'),
-      href: '/messages',
-      icon: ChatBubbleLeftRightIcon,
-      iconSolid: ChatBubbleLeftRightSolidIcon,
-      current: pathname.startsWith('/messages'),
-    },
+    // {
+    //   name: t('messages'),
+    //   href: '/messages',
+    //   icon: ChatBubbleLeftRightIcon,
+    //   iconSolid: ChatBubbleLeftRightSolidIcon,
+    //   current: pathname.startsWith('/messages'),
+    // },
   ];
 
   const getBadgeClasses = (color: 'red' | 'yellow' | 'green' | 'blue' | 'gray') => {

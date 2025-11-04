@@ -3,27 +3,25 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import WelcomeBanner from '@/components/onboarding/WelcomeBanner';
-import { useOnboarding } from '@/contexts/OnboardingContext';
 import MetricCard from '@/components/dashboard/MetricCard';
-import AlertCard from '@/components/dashboard/AlertCard';
-import RecentActivity from '@/components/dashboard/RecentActivity';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { PermissionGate } from '@/components/PermissionGate';
-import { usePermissions } from '@/hooks/usePermissions';
+// import AlertCard from '@/components/dashboard/AlertCard';
+// import RecentActivity from '@/components/dashboard/RecentActivity';
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Badge } from '@/components/ui/badge';
+// import { Button } from '@/components/ui/button';
+// import { PermissionGate } from '@/components/PermissionGate';
+// import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
 import {
-  ChatBubbleLeftRightIcon,
-  EyeIcon,
+  // ChatBubbleLeftRightIcon,
+  // EyeIcon,
   EnvelopeIcon,
-  MegaphoneIcon,
+  // MegaphoneIcon,
   BuildingOfficeIcon,
   UsersIcon,
-  ExclamationTriangleIcon,
-  ChartBarIcon,
+  // ExclamationTriangleIcon,
+  // ChartBarIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -33,10 +31,10 @@ import {
 export default function Dashboard() {
   const t = useTranslation('dashboard');
   const tCommon = useTranslation('common');
-  const { shouldShowOnboarding, completeOnboarding, skipOnboarding, resetOnboarding } = useOnboarding();
-  const { roleInfo, canViewAdvancedMetrics } = usePermissions();
+  // const { shouldShowOnboarding, completeOnboarding, skipOnboarding, resetOnboarding } = useOnboarding();
+  // const { roleInfo, canViewAdvancedMetrics } = usePermissions();
   const [metrics, setMetrics] = useState<any>(null);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  // const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -66,11 +64,11 @@ export default function Dashboard() {
         setMetrics(dashboardData);
       }
       
-      if (activityData && typeof activityData === 'object' && 'success' in activityData) {
-        setRecentActivity(activityData.data);
-      } else {
-        setRecentActivity(activityData);
-      }
+      // if (activityData && typeof activityData === 'object' && 'success' in activityData) {
+      //   setRecentActivity(activityData.data);
+      // } else {
+      //   setRecentActivity(activityData);
+      // }
     } catch (err: any) {
       console.error('Error loading dashboard stats:', err);
       setError(err.message || tCommon('failedToLoad'));
@@ -204,7 +202,7 @@ export default function Dashboard() {
         ) : null}
 
         {/* Alerts and Activity */}
-        <RecentActivity auditLogs={recentActivity} />
+        {/* <RecentActivity auditLogs={recentActivity} /> */}
       </div>
     </DashboardLayout>
   );

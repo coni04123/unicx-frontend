@@ -6,184 +6,132 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import {
   MagnifyingGlassIcon,
-  StarIcon,
   PlayIcon,
   PauseIcon,
+  StarIcon,
+  EllipsisHorizontalIcon,
+  Squares2X2Icon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import AuthenticatedImage from '@/components/common/AuthenticatedImage';
 import AuthenticatedVideo from '@/components/common/AuthenticatedVideo';
 import AuthenticatedAudio from '@/components/common/AuthenticatedAudio';
 import { Message, MessageType, MessageDirection } from '@/types/messages';
 
+interface Conversation {
+  conversationId: string;
+  displayName: string;
+  displayPhone?: string;
+  avatarUrl?: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  lastMessageType: string;
+  unreadCount: number;
+  isGroupMessage: boolean;
+  isExternal: boolean;
+  fromPhoneNumber?: string;
+  toPhoneNumber?: string;
+  whatsappUsername?: string;
+  whatsappGroupName?: string;
+}
+
 interface Contact {
   phoneNumber: string;
   displayName: string;
   avatarUrl?: string;
-  lastMessageAt: string;
-  unreadCount: number;
-  isExternal?: boolean;
+  whatsappUsername?: string;
+  isOnline?: boolean;
+  unreadCount?: number;
 }
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const [fromContacts, setFromContacts] = useState<Contact[]>([]);
-  const [allToContacts, setAllToContacts] = useState<Contact[]>([]);
-  const [filteredToContacts, setFilteredToContacts] = useState<Contact[]>([]);
-  const [selectedFromContact, setSelectedFromContact] = useState<Contact | null>(null);
-  const [selectedToContact, setSelectedToContact] = useState<Contact | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [fromSearchQuery, setFromSearchQuery] = useState('');
-  const [toSearchQuery, setToSearchQuery] = useState('');
-  const [conversationMap, setConversationMap] = useState<Map<string, Set<string>>>(new Map());
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [conversationSearchQuery, setConversationSearchQuery] = useState('');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
+    loadConversations();
     loadContacts();
   }, []);
 
   useEffect(() => {
-    if (selectedFromContact) {
-      // Filter TO contacts to show only those that have conversations with selected FROM contact
-      const conversationsWithFrom = conversationMap.get(selectedFromContact.phoneNumber) || new Set();
-      const filtered = allToContacts.filter(contact => 
-        conversationsWithFrom.has(contact.phoneNumber)
-      );
-      setFilteredToContacts(filtered);
-      // Reset selected TO contact if it's not in the filtered list
-      if (selectedToContact && !filtered.find(c => c.phoneNumber === selectedToContact?.phoneNumber)) {
-        setSelectedToContact(null);
-        setMessages([]);
-      }
-    } else {
-      setFilteredToContacts([]);
-      setSelectedToContact(null);
-      setMessages([]);
-    }
-  }, [selectedFromContact, allToContacts, conversationMap]);
-
-  useEffect(() => {
-    if (selectedFromContact && selectedToContact) {
-      loadMessages(selectedFromContact.phoneNumber, selectedToContact.phoneNumber);
+    if (selectedConversation) {
+      loadMessages(selectedConversation.conversationId);
     } else {
       setMessages([]);
     }
-  }, [selectedFromContact, selectedToContact]);
+  }, [selectedConversation]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const loadContacts = async () => {
+  const loadConversations = async () => {
     try {
-      setIsLoadingContacts(true);
-      // Load all messages to extract unique contacts
-      const data = await api.getWhatsAppMessages({ page: 1, limit: 1000 });
-      
-      // Group by fromPhoneNumber
-      const fromMap = new Map<string, Contact>();
-      // Group by toPhoneNumber
-      const toMap = new Map<string, Contact>();
-      // Map to track which contacts have conversations with each other
-      const convMap = new Map<string, Set<string>>();
-
-      data.messages.forEach((msg: Message) => {
-        // Process FROM contacts
-        const fromPhone = msg.fromPhoneNumber || msg.from;
-        const toPhone = msg.toPhoneNumber || msg.to;
-        
-        if (fromPhone) {
-          const existing = fromMap.get(fromPhone) || {
-            phoneNumber: fromPhone,
-            displayName: msg.externalSenderName || msg.metadata?.senderContactName || msg.whatsappUsername || fromPhone,
-            avatarUrl: msg.whatsappAvatarUrl,
-            lastMessageAt: msg.sentAt,
-            unreadCount: 0,
-            isExternal: msg.isExternalNumber || false,
-          };
-          
-          if (new Date(msg.sentAt) > new Date(existing.lastMessageAt)) {
-            existing.lastMessageAt = msg.sentAt;
-          }
-          
-          fromMap.set(fromPhone, existing);
-        }
-
-        // Process TO contacts
-        if (toPhone) {
-          const existing = toMap.get(toPhone) || {
-            phoneNumber: toPhone,
-            displayName: msg.metadata?.senderContactName || msg.whatsappUsername || toPhone,
-            avatarUrl: msg.whatsappAvatarUrl,
-            lastMessageAt: msg.sentAt,
-            unreadCount: 0,
-            isExternal: msg.isExternalNumber || false,
-          };
-          
-          if (new Date(msg.sentAt) > new Date(existing.lastMessageAt)) {
-            existing.lastMessageAt = msg.sentAt;
-          }
-          
-          toMap.set(toPhone, existing);
-        }
-
-        // Track conversations between FROM and TO contacts
-        if (fromPhone && toPhone) {
-          if (!convMap.has(fromPhone)) {
-            convMap.set(fromPhone, new Set());
-          }
-          convMap.get(fromPhone)!.add(toPhone);
-        }
-      });
-
-      // Convert maps to arrays and sort by lastMessageAt
-      const fromContactsArray = Array.from(fromMap.values()).sort(
-        (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-      );
-      const toContactsArray = Array.from(toMap.values()).sort(
-        (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-      );
-
-      setFromContacts(fromContactsArray);
-      setAllToContacts(toContactsArray);
-      setConversationMap(convMap);
+      setIsLoadingConversations(true);
+      const data = await api.getWhatsAppConversations();
+      setConversations(data);
     } catch (error: any) {
-      console.error('Error loading contacts:', error);
+      console.error('Error loading conversations:', error);
     } finally {
-      setIsLoadingContacts(false);
+      setIsLoadingConversations(false);
     }
   };
 
-  const loadMessages = async (fromPhone: string, toPhone: string) => {
+  const loadContacts = async () => {
+    try {
+      const data = await api.getWhatsAppConversations();
+      const contactMap = new Map<string, Contact>();
+
+      data.forEach((conv: Conversation) => {
+        if (conv.displayPhone) {
+          const phone = conv.displayPhone;
+          if (!contactMap.has(phone)) {
+            contactMap.set(phone, {
+              phoneNumber: phone,
+              displayName: conv.displayName,
+              avatarUrl: conv.avatarUrl,
+              whatsappUsername: conv.whatsappUsername,
+              isOnline: false,
+              unreadCount: conv.unreadCount,
+            });
+          } else {
+            // Update unread count if higher
+            const existing = contactMap.get(phone)!;
+            if (conv.unreadCount > (existing.unreadCount || 0)) {
+              existing.unreadCount = conv.unreadCount;
+            }
+          }
+        }
+      });
+
+      setContacts(Array.from(contactMap.values()));
+    } catch (error: any) {
+      console.error('Error loading contacts:', error);
+    }
+  };
+
+  const loadMessages = async (conversationId: string) => {
     try {
       setIsLoadingMessages(true);
-      // Load messages where fromPhoneNumber matches fromPhone and toPhoneNumber matches toPhone
-      // OR vice versa (bidirectional conversation)
-      const data = await api.getWhatsAppMessages({ 
-        page: 1, 
-        limit: 1000,
-        from: fromPhone,
-        to: toPhone,
+      const data = await api.getConversationMessages(conversationId, {
+        page: 1,
+        limit: 100,
       });
-      
-      // Also get reverse direction messages
-      const reverseData = await api.getWhatsAppMessages({ 
-        page: 1, 
-        limit: 1000,
-        from: toPhone,
-        to: fromPhone,
-      });
-
-      // Combine and sort by timestamp
-      const allMessages = [...data.messages, ...reverseData.messages].sort(
-        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-      );
-
-      setMessages(allMessages);
+      setMessages(data.messages.sort((a: Message, b: Message) => 
+        new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+      ));
     } catch (error: any) {
       console.error('Error loading messages:', error);
     } finally {
@@ -197,19 +145,23 @@ export default function MessagesPage() {
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
 
-    if (days === 0) {
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-      return 'Yesterday';
-    } else if (days < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const formatPhoneNumber = (phone: string) => {
+    // Format as (XX) XXXXX-XXXX
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`;
     }
+    return phone;
+  };
+
+  const formatLastMessage = (message: string, maxLength: number = 40) => {
+    if (message.length <= maxLength) return message;
+    return message.substring(0, maxLength) + '...';
   };
 
   const getInitials = (name: string) => {
@@ -220,14 +172,11 @@ export default function MessagesPage() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Generate consistent color based on phone number
-  const getAvatarColor = (phoneNumber: string) => {
-    // Simple hash function to generate consistent color
+  const getAvatarColor = (name: string) => {
     let hash = 0;
-    for (let i = 0; i < phoneNumber.length; i++) {
-      hash = phoneNumber.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    // Generate color in HSL format for better consistency
     const hue = Math.abs(hash) % 360;
     return `hsl(${hue}, 65%, 50%)`;
   };
@@ -240,7 +189,6 @@ export default function MessagesPage() {
       audio.pause();
       setPlayingAudioId(null);
     } else {
-      // Pause all other audios
       audioRefs.current.forEach((a, id) => {
         if (id !== messageId) a.pause();
       });
@@ -259,364 +207,344 @@ export default function MessagesPage() {
     setExpandedTranscripts(newSet);
   };
 
-  const filteredFromContacts = fromContacts.filter(contact => {
-    if (!fromSearchQuery) return true;
-    const query = fromSearchQuery.toLowerCase();
+  const filteredContacts = contacts.filter(contact => {
+    if (!contactSearchQuery) return true;
+    const query = contactSearchQuery.toLowerCase();
     return (
       contact.displayName.toLowerCase().includes(query) ||
       contact.phoneNumber.toLowerCase().includes(query)
     );
   });
 
-  const filteredToContactsSearch = filteredToContacts.filter(contact => {
-    if (!toSearchQuery) return true;
-    const query = toSearchQuery.toLowerCase();
+  const filteredConversations = conversations.filter(conv => {
+    if (!conversationSearchQuery) return true;
+    const query = conversationSearchQuery.toLowerCase();
     return (
-      contact.displayName.toLowerCase().includes(query) ||
-      contact.phoneNumber.toLowerCase().includes(query)
+      conv.displayName.toLowerCase().includes(query) ||
+      conv.displayPhone?.toLowerCase().includes(query) ||
+      conv.lastMessage.toLowerCase().includes(query)
     );
   });
-
-  const renderContactItem = (contact: Contact, isSelected: boolean, onClick: () => void) => (
-    <div
-      key={contact.phoneNumber}
-      onClick={onClick}
-      className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-        isSelected ? 'bg-gray-100' : ''
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        {/* Avatar */}
-        <div className="relative flex-shrink-0">
-          {contact.avatarUrl ? (
-            <img
-              src={contact.avatarUrl}
-              alt={contact.displayName}
-              className="w-10 h-10 rounded-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.nextElementSibling as HTMLElement;
-                if (fallback) fallback.classList.remove('hidden');
-              }}
-            />
-          ) : null}
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-xs ${
-              contact.avatarUrl ? 'hidden' : ''
-            }`}
-            style={{
-              backgroundColor: getAvatarColor(contact.phoneNumber),
-            }}
-          >
-            {getInitials(contact.displayName)}
-          </div>
-        </div>
-
-        {/* Contact Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-gray-900 truncate text-sm">{contact.displayName}</h3>
-            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-              {formatTime(contact.lastMessageAt)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-gray-600 truncate flex-1">{contact.phoneNumber}</p>
-            {contact.isExternal && (
-              <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded flex-shrink-0">
-                External
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-120px)] bg-white rounded-lg shadow-sm overflow-hidden">
-        {/* Left Sidebar - FROM Contacts */}
-        <div className="w-1/4 border-r border-gray-200 flex flex-col">
-          {/* Search Bar */}
+      <div className="flex h-[calc(100vh-80px)] bg-white overflow-hidden">
+        {/* Left Column - Contacts */}
+        <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
+          {/* Header */}
+          {/* <div className="p-4 border-b border-gray-200">
+            <h1 className="text-xl font-bold text-gray-900">Mensagens</h1>
+          </div> */}
+
+          {/* Search */}
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search From..."
-                value={fromSearchQuery}
-                onChange={(e) => setFromSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                placeholder="Pesquisar contatos"
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="font-semibold text-gray-900 text-sm">From</h2>
-          </div>
-
           {/* Contacts List */}
           <div className="flex-1 overflow-y-auto">
-            {isLoadingContacts ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500 text-sm">Loading contacts...</p>
+            {isLoadingConversations ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                Carregando...
               </div>
-            ) : filteredFromContacts.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500 text-sm">No contacts found</p>
+            ) : filteredContacts.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                Nenhum contato
               </div>
             ) : (
-              filteredFromContacts.map((contact) =>
-                renderContactItem(
-                  contact,
-                  selectedFromContact?.phoneNumber === contact.phoneNumber,
-                  () => setSelectedFromContact(contact)
-                )
-              )
+              filteredContacts.map((contact) => {
+                const isSelected = selectedContact?.phoneNumber === contact.phoneNumber;
+                const unreadCount = contact.unreadCount || 0;
+
+                return (
+                  <div
+                    key={contact.phoneNumber}
+                    onClick={() => {
+                      setSelectedContact(contact);
+                      const conv = conversations.find(c => c.displayPhone === contact.phoneNumber);
+                      if (conv) setSelectedConversation(conv);
+                    }}
+                    className={`p-3 border-b border-gray-100 cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        {contact.avatarUrl ? (
+                          <img
+                            src={contact.avatarUrl}
+                            alt={contact.displayName}
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm ${
+                            contact.avatarUrl ? 'hidden' : ''
+                          }`}
+                          style={{ backgroundColor: getAvatarColor(contact.displayName) }}
+                        >
+                          {getInitials(contact.displayName)}
+                        </div>
+                        {unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                            {unreadCount}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.displayName}</h3>
+                        <p className="text-xs text-gray-500 truncate">{formatPhoneNumber(contact.phoneNumber)}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Right Sidebar - TO Contacts */}
-        <div className="w-1/4 border-r border-gray-200 flex flex-col">
-          {/* Search Bar */}
+        {/* Middle Column - Conversations */}
+        <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
+          {/* Search */}
           <div className="p-4 border-b border-gray-200">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search To..."
-                value={toSearchQuery}
-                onChange={(e) => setToSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                placeholder="Pesquisar conversas"
+                value={conversationSearchQuery}
+                onChange={(e) => setConversationSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="font-semibold text-gray-900 text-sm">To</h2>
-          </div>
-
-          {/* Contacts List */}
+          {/* Conversations List */}
           <div className="flex-1 overflow-y-auto">
-            {isLoadingContacts ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500 text-sm">Loading contacts...</p>
+            {isLoadingConversations ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                Carregando...
               </div>
-            ) : filteredToContacts.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500 text-sm">No contacts found</p>
-              </div>
-            ) : filteredToContactsSearch.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500 text-sm">
-                  {selectedFromContact ? 'No conversations found' : 'Select a FROM contact first'}
-                </p>
+            ) : filteredConversations.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                Nenhuma conversa
               </div>
             ) : (
-              filteredToContactsSearch.map((contact) =>
-                renderContactItem(
-                  contact,
-                  selectedToContact?.phoneNumber === contact.phoneNumber,
-                  () => setSelectedToContact(contact)
-                )
-              )
+              filteredConversations.map((conv) => {
+                const isSelected = selectedConversation?.conversationId === conv.conversationId;
+                const lastMessageTime = formatTime(conv.lastMessageAt);
+
+                return (
+                  <div
+                    key={conv.conversationId}
+                    onClick={() => setSelectedConversation(conv)}
+                    className={`p-3 border-b border-gray-100 cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        {conv.avatarUrl ? (
+                          <img
+                            src={conv.avatarUrl}
+                            alt={conv.displayName}
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm ${
+                            conv.avatarUrl ? 'hidden' : ''
+                          }`}
+                          style={{ backgroundColor: getAvatarColor(conv.displayName) }}
+                        >
+                          {getInitials(conv.displayName)}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h3 className="font-semibold text-gray-900 text-sm truncate">{conv.displayName}</h3>
+                          <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{lastMessageTime}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-600 truncate flex-1">{formatLastMessage(conv.lastMessage)}</p>
+                          {conv.unreadCount === 0 && (
+                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Center - Chat Window */}
-        <div className="flex-1 flex flex-col">
-          {selectedFromContact && selectedToContact ? (
+        {/* Right Column - Chat Window */}
+        <div className="flex-1 flex flex-col bg-white">
+          {selectedConversation ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    {selectedFromContact.avatarUrl ? (
-                      <img
-                        src={selectedFromContact.avatarUrl}
-                        alt={selectedFromContact.displayName}
-                        className="w-8 h-8 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs"
-                        style={{
-                          backgroundColor: getAvatarColor(selectedFromContact.phoneNumber),
-                        }}
-                      >
-                        {getInitials(selectedFromContact.displayName)}
-                      </div>
-                    )}
-                    <span className="text-sm font-medium text-gray-700">→</span>
-                    {selectedToContact.avatarUrl ? (
-                      <img
-                        src={selectedToContact.avatarUrl}
-                        alt={selectedToContact.displayName}
-                        className="w-8 h-8 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs"
-                        style={{
-                          backgroundColor: getAvatarColor(selectedToContact.phoneNumber),
-                        }}
-                      >
-                        {getInitials(selectedToContact.displayName)}
-                      </div>
-                    )}
+                  {selectedConversation.avatarUrl ? (
+                    <img
+                      src={selectedConversation.avatarUrl}
+                      alt={selectedConversation.displayName}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm ${
+                      selectedConversation.avatarUrl ? 'hidden' : ''
+                    }`}
+                    style={{ backgroundColor: getAvatarColor(selectedConversation.displayName) }}
+                  >
+                    {getInitials(selectedConversation.displayName)}
                   </div>
                   <div>
-                    <h2 className="font-semibold text-gray-900 text-sm">
-                      {selectedFromContact.displayName} → {selectedToContact.displayName}
-                    </h2>
-                    <p className="text-xs text-gray-500">
-                      {selectedFromContact.phoneNumber} → {selectedToContact.phoneNumber}
-                    </p>
+                    <h2 className="font-semibold text-gray-900 text-base">{selectedConversation.displayName}</h2>
+                    <p className="text-xs text-gray-500">{formatPhoneNumber(selectedConversation.displayPhone || '')}</p>
                   </div>
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded-full">
-                  <StarIcon className="w-5 h-5 text-gray-600" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <StarIcon className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 rounded-lg">
+                    <EllipsisHorizontalIcon className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
               </div>
 
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+              <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
                 {isLoadingMessages ? (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">Loading messages...</p>
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    Carregando mensagens...
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">No messages found between these contacts</p>
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    Nenhuma mensagem
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {messages.map((message) => {
-                      const isOutbound = message.direction === MessageDirection.OUTBOUND;
-                      const isAudio = message.type === MessageType.AUDIO;
-                      const isPlaying = playingAudioId === message._id;
+                  messages.map((message) => {
+                    const isOutbound = message.direction === MessageDirection.OUTBOUND;
+                    const isAudio = message.type === MessageType.AUDIO;
+                    const isPlaying = playingAudioId === message._id;
 
-                      return (
-                        <div
-                          key={message._id}
-                          className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}
-                        >
+                    return (
+                      <div
+                        key={message._id}
+                        className={`flex ${isOutbound ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                      >
+                        {!isAudio && (
                           <div
-                            className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                            className={`max-w-xs rounded-lg px-4 py-2 ${
                               isOutbound
-                                ? 'bg-green-500 text-white'
-                                : 'bg-white text-gray-900 shadow-sm'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-200 text-gray-900'
                             }`}
                           >
-                            {/* Reply Preview */}
-                            {message.replyToMessage && (
-                              <div
-                                className={`mb-2 pb-2 border-l-2 pl-2 text-xs ${
-                                  isOutbound ? 'border-green-300' : 'border-gray-300'
-                                }`}
-                              >
-                                <p className="font-semibold">{message.replyToMessage.senderName}</p>
-                                <p className="truncate">{message.replyToMessage.content}</p>
-                              </div>
+                            {message.type === MessageType.TEXT && (
+                              <p className="text-sm break-words">{message.content}</p>
                             )}
-
-                            {/* Message Content */}
-                            {isAudio ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                  <button
-                                    onClick={() => handleAudioPlay(message._id)}
-                                    className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center hover:bg-opacity-30 transition-colors"
-                                  >
-                                    {isPlaying ? (
-                                      <PauseIcon className="w-5 h-5 text-white" />
-                                    ) : (
-                                      <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-                                    )}
-                                  </button>
-                                  <div className="flex-1">
-                                    <div className="h-1 bg-white bg-opacity-30 rounded-full overflow-hidden">
-                                      <div className="h-full bg-white w-1/3"></div>
-                                    </div>
-                                    <audio
-                                      ref={(el) => {
-                                        if (el) audioRefs.current.set(message._id, el);
-                                      }}
-                                      src={message.mediaUrl}
-                                      onEnded={() => setPlayingAudioId(null)}
-                                      onPause={() => setPlayingAudioId(null)}
-                                    />
-                                    <p className="text-xs mt-1">0:10</p>
-                                  </div>
-                                </div>
-                                {/* Transcription */}
-                                {message.metadata?.caption && (
-                                  <div>
-                                    <button
-                                      onClick={() => toggleTranscript(message._id)}
-                                      className="text-xs underline hover:no-underline"
-                                    >
-                                      {expandedTranscripts.has(message._id) ? '−' : '+'} Transcrição
-                                    </button>
-                                    {expandedTranscripts.has(message._id) && (
-                                      <p className="text-sm mt-1">{message.metadata.caption}</p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ) : message.type === MessageType.IMAGE ? (
-                              <div>
-                                <AuthenticatedImage
-                                  src={message.mediaUrl || ''}
-                                  alt="Image"
-                                  className="rounded-lg max-w-full"
-                                />
-                                {message.content && <p className="mt-2">{message.content}</p>}
-                              </div>
-                            ) : message.type === MessageType.VIDEO ? (
-                              <div>
-                                <AuthenticatedVideo
-                                  src={message.mediaUrl || ''}
-                                  className="rounded-lg max-w-full"
-                                />
-                                {message.content && <p className="mt-2">{message.content}</p>}
-                              </div>
-                            ) : (
-                              <p className="whitespace-pre-wrap">{message.content}</p>
+                            {message.type === MessageType.IMAGE && message.mediaUrl && (
+                              <AuthenticatedImage src={message.mediaUrl} alt="message" className="max-w-xs rounded" />
                             )}
-
-                            {/* Timestamp */}
+                            {message.type === MessageType.VIDEO && message.mediaUrl && (
+                              <AuthenticatedVideo src={message.mediaUrl} className="max-w-xs rounded" />
+                            )}
                             <p className={`text-xs mt-1 ${isOutbound ? 'text-green-100' : 'text-gray-500'}`}>
                               {formatTime(message.sentAt)}
                             </p>
                           </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
+                        )}
+                        {isAudio && (
+                          <>
+                            <div className="max-w-xs rounded-lg px-3 py-2 bg-gray-700 flex items-center gap-3">
+                              <button
+                                onClick={() => handleAudioPlay(message._id)}
+                                className="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors flex-shrink-0"
+                              >
+                                {isPlaying ? (
+                                  <PauseIcon className="w-5 h-5 text-white" />
+                                ) : (
+                                  <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+                                )}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="h-1 rounded-full overflow-hidden bg-gray-600">
+                                  <div className="h-full bg-green-600" style={{ width: '25%' }}></div>
+                                </div>
+                                <p className="text-xs mt-1 text-white">0:10</p>
+                              </div>
+                              <p className="text-xs text-white flex-shrink-0">{formatTime(message.sentAt)}</p>
+                              <audio
+                                ref={(el) => {
+                                  if (el) audioRefs.current.set(message._id, el);
+                                }}
+                                src={message.mediaUrl || undefined}
+                                onEnded={() => setPlayingAudioId(null)}
+                                onPause={() => setPlayingAudioId(null)}
+                              />
+                            </div>
+                            {message.metadata?.caption && (
+                              <div className={`max-w-xs ${isOutbound ? 'ml-auto' : ''} mt-2`}>
+                                <button
+                                  onClick={() => toggleTranscript(message._id)}
+                                  className="text-xs text-blue-600 underline hover:no-underline"
+                                >
+                                  {expandedTranscripts.has(message._id) ? '−' : '+'} Transcrição
+                                </button>
+                                {expandedTranscripts.has(message._id) && (
+                                  <p className="text-sm mt-1 text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                    {message.metadata.caption}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <p className="text-gray-500 text-lg">Select FROM and TO contacts to view messages</p>
-              </div>
+            <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
+              <p>Selecione uma conversa para visualizar mensagens</p>
             </div>
           )}
         </div>

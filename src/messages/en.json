@@ -57,6 +57,7 @@
     "users": "Users",
     "communication": "Communication",
     "communications": "Communications",
+    "monitoring": "Monitoring",
     "messages": "Messages",
     "settings": "Settings",
     "logout": "Logout"
@@ -71,7 +72,7 @@
     "communicationCard": "Communication",
     "welcomeMessage": "Welcome back! Here's what's happening with {tenantName} today.",
     "metrics": {
-      "totalEntities": "Total Entities",
+      "totalEntities": "Entities/Companies/Departments",
       "entities": "Entities",
       "totalMessages": "Total Messages",
       "whatsappMessages": "WhatsApp Messages",

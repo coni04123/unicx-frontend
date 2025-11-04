@@ -29,7 +29,11 @@ export interface Message {
   to: string;
   fromPhoneNumber?: string;
   toPhoneNumber?: string;
-  userId?: string;
+  // WhatsApp Contact Names and Avatars
+  fromName?: string; // WhatsApp account name or group name (not ID nor phone)
+  toName?: string; // WhatsApp account name or group name (not ID nor phone)
+  fromAvatarUrl?: string; // WhatsApp account avatar URL
+  toAvatarUrl?: string; // WhatsApp account avatar URL
   type: MessageType;
   direction: MessageDirection;
   content: string;
@@ -41,7 +45,6 @@ export interface Message {
     isStarred: boolean;
     mediaType?: string;
     caption?: string;
-    // External number metadata
     senderContactName?: string;
     senderContactPhone?: string;
     isExternalSender?: boolean;
@@ -75,10 +78,6 @@ export interface Message {
   tenantId: string;
   // External number detection fields
   isExternalNumber?: boolean;
-  externalSenderName?: string;
-  externalSenderPhone?: string;
-  // WhatsApp Contact Information
-  whatsappAvatarUrl?: string;
   whatsappUsername?: string;
   whatsappGroupName?: string;
   isGroupMessage?: boolean;
