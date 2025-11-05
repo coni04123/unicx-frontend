@@ -141,29 +141,20 @@ export default function UserManagementPage() {
   // Entity tree navigation
   const [selectedEntityPath, setSelectedEntityPath] = useState<string>('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [showStructurePanel, setShowStructurePanel] = useState(true);
+  const [showStructurePanel, setShowStructurePanel] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [roleFilter, setRoleFilter] = useState<string>(searchParams.get('role') || 'TenantAdmin'); // 'TenantAdmin' or 'User' or ''
-
-  // Update URL when role filter changes
-  const updateRoleFilter = (role: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('role', role);
-    router.push(`?${params.toString()}`);
-    setRoleFilter(role);
-  };
+  const [roleFilter] = useState<string>('User'); // Always show only Users
   const [whatsappFilter, setWhatsappFilter] = useState<string>('');
   const [healthCheckLoading, setHealthCheckLoading] = useState<string | null>(null);
   
-  // Determine if we're viewing Managers only
-  const isViewingTenantAdmins = roleFilter === 'TenantAdmin';
-  const isViewingUsers = roleFilter === 'User';
+  // Always viewing Users only
+  const isViewingTenantAdmins = false;
+  const isViewingUsers = true;
 
   // Form state
   const [inviteForm, setInviteForm] = useState<InviteUserForm>({
@@ -893,61 +884,25 @@ export default function UserManagementPage() {
               }`}
             >
               <FunnelIcon className="w-4 h-4 mr-2" />
-              Advanced Filters
+              Filters
             </button>
-          </div>
-        </div>
-
-        {/* Role Filter Tabs */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between px-4">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              <button
-                onClick={() => updateRoleFilter('TenantAdmin')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  roleFilter === 'TenantAdmin'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <UserIcon className={`inline-block w-5 h-5 mr-2 ${roleFilter === 'TenantAdmin' ? 'text-blue-500' : 'text-gray-400'}`} />
-                Managers
-              </button>
-              <button
-                onClick={() => updateRoleFilter('User')}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  roleFilter === 'User'
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <UserGroupIcon className={`inline-block w-5 h-5 mr-2 ${roleFilter === 'User' ? 'text-green-500' : 'text-gray-400'}`} />
-                Users
-              </button>
-            </nav>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => {
-                  setInviteForm({
-                    firstName: '',
-                    lastName: '',
-                    email: '',
-                    phoneNumber: '',
-                    entityId: '',
-                    role: roleFilter === 'TenantAdmin' ? 'TenantAdmin' : 'User',
-                  });
-                  setShowInviteModal(true);           
-                }}
-                className={`inline-flex items-center px-4 py-2 text-sm text-white rounded-md transition-colors ${
-                  roleFilter === 'TenantAdmin'
-                    ? 'bg-blue-600 hover:bg-blue-700'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                {roleFilter === 'TenantAdmin' ? 'Manager' : 'User'}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setInviteForm({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  phoneNumber: '',
+                  entityId: '',
+                  role: 'User',
+                });
+                setShowInviteModal(true);
+              }}
+              className="inline-flex items-center px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add User
+            </button>
           </div>
         </div>
 
@@ -1033,7 +988,7 @@ export default function UserManagementPage() {
             {showAdvancedFilters && (
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
                   <button
                     onClick={() => {
                       setStatusFilter('');
@@ -1386,7 +1341,7 @@ export default function UserManagementPage() {
             <div className="relative mx-auto p-5 border-0 w-[500px] shadow-xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  {inviteForm.role === 'TenantAdmin' ? 'Create Manager' : 'Invite User'}
+                  Invite User
                 </h3>
                 
                 {/* Error message inside modal */}
@@ -1479,24 +1434,10 @@ export default function UserManagementPage() {
                     </div>
                   </div>
 
-                  {/* Info message based on role */}
-                  <div className={`border rounded-md p-3 ${
-                    inviteForm.role === 'TenantAdmin' 
-                      ? 'bg-purple-50 border-purple-200' 
-                      : 'bg-blue-50 border-blue-200'
-                  }`}>
-                    <p className={`text-sm ${
-                      inviteForm.role === 'TenantAdmin' 
-                        ? 'text-purple-800' 
-                        : 'text-blue-800'
-                    }`}>
-                      {inviteForm.role === 'TenantAdmin' 
-                        ? (<>
-                            Manager will receive invitation via email with login credentials.
-                          </>) 
-                        : (<>
-                            User will receive invitation with QR code via email for WhatsApp connection setup.
-                          </>)}
+                  {/* Info message */}
+                  <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      User will receive invitation with QR code via email for WhatsApp connection setup.
                     </p>
                   </div>
                 </div>
@@ -1522,21 +1463,17 @@ export default function UserManagementPage() {
                   <button
                     onClick={handleInviteUser}
                     disabled={isInviting}
-                    className={`px-4 py-2 text-white rounded-md transition-colors disabled:opacity-50 flex items-center ${
-                      inviteForm.role === 'TenantAdmin'
-                        ? 'bg-purple-600 hover:bg-purple-700'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
+                    className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 flex items-center"
                   >
                     {isInviting ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        {inviteForm.role === 'TenantAdmin' ? 'Creating...' : 'Inviting...'}
+                        Inviting...
                       </>
                     ) : (
                       <>
                         <EnvelopeIcon className="w-4 h-4 mr-2" />
-                        {inviteForm.role === 'TenantAdmin' ? 'Create Admin' : 'Send Invitation'}
+                        Send Invitation
                       </>
                     )}
                   </button>

@@ -755,7 +755,7 @@ export default function EntityStructurePage() {
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
-              Add Root Entity
+              Root Entity
             </button>
           </div>
         </div>

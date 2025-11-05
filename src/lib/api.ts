@@ -349,7 +349,7 @@ class ApiClient {
   }
 
   async inviteUser(data: {
-    phoneNumber: string;
+    phoneNumber?: string;
     email: string;
     firstName: string;
     lastName: string;

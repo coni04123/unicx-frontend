@@ -38,6 +38,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const formatNumber = (value: number | undefined) => (value ?? 0).toLocaleString();
+
   useEffect(() => {
     loadDashboardStats();
   }, []);
@@ -135,7 +137,7 @@ export default function Dashboard() {
             {/* Overview Cards */}
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {/* Entity Overview */}
-              <div className="card">
+              {/* <div className="card">
                 <div className="card-header">
                   <h3 className="text-lg font-medium text-gray-900">{t('metrics.entityOverview')}</h3>
                 </div>
@@ -159,10 +161,10 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Communication Overview */}
-              <div className="card">
+              {/* <div className="card">
                 <div className="card-header">
                   <h3 className="text-lg font-medium text-gray-900">{t('metrics.communicationOverview')}</h3>
                 </div>
@@ -170,25 +172,75 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">{t('metrics.messages24h')}</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {metrics.messages.sent24h.toLocaleString()}
+                      <span className="text-sm font-medium text-gray-900">      
+                        {formatNumber(metrics.messages.sent24h)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">{t('metrics.monitored')}</span>
-                      <span className="text-sm font-medium text-green-600">
-                        {metrics.messages.inbound.toLocaleString()}
+                      <span className="text-sm font-medium text-green-600">     
+                        {formatNumber(metrics.messages.inbound)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">{t('metrics.external')}</span>
-                      <span className="text-sm font-medium text-orange-600">
-                        {metrics.messages.outbound.toLocaleString()}
+                      <span className="text-sm font-medium text-orange-600">    
+                        {formatNumber(metrics.messages.outbound)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between border-t pt-3">
                       <span className="text-sm font-medium text-gray-900">{t('metrics.totalMessages')}</span>
-                      <span className="text-sm font-bold text-primary-600">{metrics.messages.total}</span>
+                      <span className="text-sm font-bold text-primary-600">{formatNumber(metrics.messages.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div> */}
+
+              {/* Users Overview */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="text-lg font-medium text-gray-900">{t('metrics.usersOverview')}</h3>
+                </div>
+                <div className="card-body">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('metrics.connectedUsers')}</span>
+                      <span className="text-sm font-medium text-green-600">{formatNumber(metrics.users.connected)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('metrics.unconnectedUsers')}</span>
+                      <span className="text-sm font-medium text-orange-500">{formatNumber(metrics.users.unconnected)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t pt-3">
+                      <span className="text-sm font-medium text-gray-900">{t('metrics.totalUsers')}</span>
+                      <span className="text-sm font-bold text-primary-600">{formatNumber(metrics.users.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Volume Overview */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="text-lg font-medium text-gray-900">{t('metrics.messagesOverview')}</h3>
+                </div>
+                <div className="card-body">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('metrics.messages24h')}</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumber(metrics.messages.sent24h)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('metrics.messages30d')}</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumber(metrics.messages.sent30d)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('metrics.messages365d')}</span>
+                      <span className="text-sm font-medium text-gray-900">{formatNumber(metrics.messages.sent365d)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t pt-3">
+                      <span className="text-sm font-medium text-gray-900">{t('metrics.totalMessages')}</span>
+                      <span className="text-sm font-bold text-primary-600">{formatNumber(metrics.messages.total)}</span>
                     </div>
                   </div>
                 </div>

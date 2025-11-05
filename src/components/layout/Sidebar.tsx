@@ -11,6 +11,7 @@ import {
   EnvelopeIcon,
   UsersIcon,
   ChatBubbleLeftRightIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolidIcon,
@@ -18,6 +19,7 @@ import {
   EnvelopeIcon as EnvelopeSolidIcon,
   UsersIcon as UsersSolidIcon,
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolidIcon,
+  UserGroupIcon as UserGroupSolidIcon,
 } from '@heroicons/react/24/solid';
 
 interface NavigationItem {
@@ -58,6 +60,13 @@ export default function Sidebar() {
       icon: UsersIcon,
       iconSolid: UsersSolidIcon,
       current: pathname.startsWith('/users'),
+    },
+    {
+      name: t('managers'),
+      href: '/managers',
+      icon: UserGroupIcon,
+      iconSolid: UserGroupSolidIcon,
+      current: pathname.startsWith('/managers'),
     },
     {
       name: t('monitoring'),

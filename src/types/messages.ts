@@ -48,6 +48,8 @@ export interface Message {
     senderContactName?: string;
     senderContactPhone?: string;
     isExternalSender?: boolean;
+    fileName?: string;
+    fileSize?: number;
     registeredUserInfo?: {
       firstName: string;
       lastName: string;

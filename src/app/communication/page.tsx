@@ -20,6 +20,7 @@ import { Entity } from '@/types/entities';
 import AuthenticatedImage from '@/components/common/AuthenticatedImage';
 import AuthenticatedVideo from '@/components/common/AuthenticatedVideo';
 import AuthenticatedAudio from '@/components/common/AuthenticatedAudio';
+import AuthenticatedAttachment from '@/components/common/AuthenticatedAttachment';
 
 interface FilterOptions {
   entityUserNumber?: string;
@@ -63,7 +64,7 @@ export default function CommunicationPage() {
   // Entity navigation state
   const [selectedEntityPath, setSelectedEntityPath] = useState<string>('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['entity-x']));
-  const [showStructurePanel, setShowStructurePanel] = useState(true);
+  const [showStructurePanel, setShowStructurePanel] = useState(false);
   
   // WhatsApp monitoring filters
   const [whatsappFilters, setWhatsappFilters] = useState<FilterOptions>({
@@ -79,12 +80,11 @@ export default function CommunicationPage() {
   
   // Message content search state
   const [messageContent, setMessageContent] = useState('');
-  const [showMessageSearch, setShowMessageSearch] = useState(false);
-  const [showWhatsAppFilters, setShowWhatsAppFilters] = useState(false);
 
   // Load messages when filters, pagination, or selected entity changes
   useEffect(() => {
     loadMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, whatsappFilters, selectedEntityPath]);
 
   // Load entities and users
@@ -114,13 +114,11 @@ export default function CommunicationPage() {
         const selectedEntity = findEntityByPath(entities, selectedEntityPath);
         if (selectedEntity) {
           filters.entityId = selectedEntity._id;
-          console.log('Selected entity ID:', selectedEntity._id); // Debug log
         } else {
           console.warn('Selected entity not found for path:', selectedEntityPath); // Debug log
         }
       } else if (currentUser?.role !== 'SystemAdmin' && currentUser?.entityId) {
         filters.entityId = currentUser.entityId;
-        console.log('Using user entityId:', currentUser.entityId); // Debug log
       }
 
       if (whatsappFilters.direction && whatsappFilters.direction !== 'both') {
@@ -143,8 +141,50 @@ export default function CommunicationPage() {
         filters.isExternal = whatsappFilters.isExternal;
       }
 
+      // Enhanced search: phone number, user name, or message content
       if (messageContent) {
-        filters.messageContent = messageContent;
+        const searchTerm = messageContent.trim();
+        
+        // Check if search term looks like a phone number (contains digits, +, or spaces)
+        const isPhoneNumber = /[\d+\s-]/.test(searchTerm) && /[\d]/.test(searchTerm);
+        
+        if (isPhoneNumber) {
+          // Search by phone number
+          filters.phoneNumber = searchTerm;
+        } else {
+          // Check if it matches any user names or emails (only if users are loaded)
+          const matchingUsers = (users && users.length > 0) ? users.filter((user: any) => {
+            const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().trim();
+            const firstName = (user.firstName || '').toLowerCase();
+            const lastName = (user.lastName || '').toLowerCase();
+            const email = (user.email || '').toLowerCase();
+            const searchLower = searchTerm.toLowerCase();
+            
+            return fullName.includes(searchLower) || 
+                   firstName.includes(searchLower) || 
+                   lastName.includes(searchLower) ||
+                   email.includes(searchLower);
+          }) : [];
+          
+          if (matchingUsers.length > 0) {
+            // If user names match, search by their phone numbers
+            const userPhoneNumbers = matchingUsers
+              .map((user: any) => user.phoneNumber)
+              .filter((phone: string) => phone && phone.trim() !== '');
+            
+            if (userPhoneNumbers.length > 0) {
+              // Search by the first matching user's phone number
+              // This will find all messages from/to that user
+              filters.phoneNumber = userPhoneNumbers[0];
+            } else {
+              // No phone numbers, search by message content only
+              filters.messageContent = searchTerm;
+            }
+          } else {
+            // Not a phone number and no user match, search by message content
+            filters.messageContent = searchTerm;
+          }
+        }
       }
 
       if (whatsappFilters.timeRange) {
@@ -165,8 +205,6 @@ export default function CommunicationPage() {
           filters.endDate = now.toISOString();
         }
       }
-
-      console.log('Fetching messages with filters:', filters);
 
       const data = await api.getWhatsAppMessages(filters);
       setMessages(data.messages);
@@ -488,17 +526,6 @@ export default function CommunicationPage() {
               <BuildingOfficeIcon className="w-4 h-4 mr-2" />
               Entity Structure
             </button>
-            <button
-              onClick={() => setShowWhatsAppFilters(!showWhatsAppFilters)}
-              className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                showWhatsAppFilters
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <FunnelIcon className="w-4 h-4 mr-2" />
-              Advanced Filters
-            </button>
           </div>
         </div>
 
@@ -547,13 +574,6 @@ export default function CommunicationPage() {
                         <span className={`text-sm font-medium ${!selectedEntityPath ? 'text-primary-900' : 'text-gray-900'}`}>
                           All Messages
                         </span>
-                        {/* {messages.length > 0 && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            !selectedEntityPath ? 'bg-primary-200 text-primary-800' : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {messages.length}
-                          </span>
-                        )} */}
                       </div>
                     </div>
                   </div>
@@ -577,103 +597,47 @@ export default function CommunicationPage() {
 
           {/* Messages Content */}
           <div className="flex-1 min-w-0 space-y-6">
-            {/* Message Content Search */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search message content..."
-                      value={messageContent}
-                      onChange={(e) => setMessageContent(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          loadMessages();
-                        }
-                      }}
-                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <button
-                      onClick={loadMessages}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <MagnifyingGlassIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {showWhatsAppFilters && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">WhatsApp Advanced Filters</h3>
-                  <button
-                    onClick={() => {
-                      setWhatsappFilters({
-                        entityUserNumber: '',
-                        entityPath: '',
-                        e164Number: '',
-                        userId: '',
-                        timeRange: { type: 'last_days', value: 0 },
-                        messageType: 'all',
-                        direction: 'both',
-                        registrationStatus: 'all',
-                        isExternal: undefined
-                      });
-                      setSelectedEntityPath('');
-                    }}
-                    className="text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md transition-colors"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Entity User Number Filter */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Entity User Number (E164)
-                      {selectedEntityPath && (
-                        <span className="ml-2 text-xs text-gray-500">
-                          ({usersInSelectedPath.length} users)
-                        </span>
-                      )}
-                    </label>
-                    <select
-                      value={whatsappFilters.entityUserNumber || ''}
-                      onChange={(e) => setWhatsappFilters(prev => ({ ...prev, entityUserNumber: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">
-                        {selectedEntityPath ? t('allUsersInSelectedEntity') : t('allEntityUsers')}
-                      </option>
-                      {usersInSelectedPath.map(user => (
-                        <option key={user.id} value={user.e164Number}>
-                          {user.name} ({user.e164Number})
-                        </option>
-                      ))}
-                    </select>
-                  </div> */}
-
-
+            {/* Filters and Search - Horizontal Layout */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="p-4">
+                {/* First Row - Main Filters */}
+                <div className="flex items-end gap-3 flex-wrap">
                   {/* Phone Number Search */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex-1 min-w-[160px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <i className="bi bi-telephone text-primary-600 text-sm"></i>
                       Any E164 Number
                     </label>
                     <input
+                      type="text"
                       value={whatsappFilters.e164Number || ''}
-                      placeholder='Enter E164 Number'
+                      placeholder="Enter E164 Number"
                       onChange={(e) => setWhatsappFilters(prev => ({ ...prev, e164Number: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
                     />
                   </div>
 
+                  {/* Message Direction Filter */}
+                  <div className="flex-1 min-w-[160px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <i className="bi bi-arrow-left-right text-primary-600 text-sm"></i>
+                      Message Direction
+                    </label>
+                    <select
+                      value={whatsappFilters.direction || 'both'}
+                      onChange={(e) => setWhatsappFilters(prev => ({ ...prev, direction: e.target.value as any }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white transition-all cursor-pointer"
+                    >
+                      <option value="both">Both Directions</option>
+                      <option value="inbound">Inbound Only</option>
+                      <option value="outbound">Outbound Only</option>
+                    </select>
+                  </div>
+
                   {/* External Numbers Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex-1 min-w-[160px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <i className="bi bi-person-check text-primary-600 text-sm"></i>
                       External Numbers
                     </label>
                     <select
@@ -682,110 +646,24 @@ export default function CommunicationPage() {
                         const value = e.target.value === 'all' ? undefined : e.target.value === 'external';
                         setWhatsappFilters(prev => ({ ...prev, isExternal: value }));
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white transition-all cursor-pointer"
                     >
                       <option value="all">All Messages</option>
                       <option value="external">External Numbers Only</option>
                       <option value="registered">Registered Users Only</option>
                     </select>
-                    <div className="mt-1 text-xs text-gray-500">
-                      Filter by external (unregistered) vs registered users
-                    </div>
-                  </div>
-
-                  {/* Enhanced Time Range Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Time Period
-                    </label>
-                    <div className="space-y-2">
-                      <select
-                        value={whatsappFilters.timeRange?.type || 'last_days'}
-                        onChange={(e) => setWhatsappFilters(prev => ({ 
-                          ...prev, 
-                          timeRange: { 
-                            type: e.target.value as any,
-                            value: e.target.value === 'date_range' ? undefined : prev.timeRange?.value,
-                            startDate: e.target.value === 'date_range' ? prev.timeRange?.startDate : undefined,
-                            endDate: e.target.value === 'date_range' ? prev.timeRange?.endDate : undefined
-                          }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="last_hours">Last Hours</option>
-                        <option value="last_days">Last Days</option>
-                        <option value="date_range">Custom Date Range</option>
-                      </select>
-                      
-                      {whatsappFilters.timeRange?.type === 'date_range' ? (
-                        <div className="space-y-2">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">From Date</label>
-                            <input
-                              type="date"
-                              value={whatsappFilters.timeRange?.startDate || ''}
-                              onChange={(e) => setWhatsappFilters(prev => ({ 
-                                ...prev, 
-                                timeRange: { ...prev.timeRange!, startDate: e.target.value }
-                              }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">To Date</label>
-                            <input
-                              type="date"
-                              value={whatsappFilters.timeRange?.endDate || ''}
-                              onChange={(e) => setWhatsappFilters(prev => ({ 
-                                ...prev, 
-                                timeRange: { ...prev.timeRange!, endDate: e.target.value }
-                              }))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <input
-                          type="number"
-                          value={whatsappFilters.timeRange?.value || ''}
-                          onChange={(e) => setWhatsappFilters(prev => ({ 
-                            ...prev, 
-                            timeRange: { ...prev.timeRange!, value: parseInt(e.target.value) || 0 }
-                          }))}
-                          placeholder={whatsappFilters.timeRange?.type === 'last_hours' ? 'Enter hours' : 'Enter days'}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  
-
-                  {/* Message Direction Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Message Direction
-                    </label>
-                    <select
-                      value={whatsappFilters.direction || 'both'}
-                      onChange={(e) => setWhatsappFilters(prev => ({ ...prev, direction: e.target.value as any }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="both">Both Directions</option>
-                      <option value="inbound">Inbound Only</option>
-                      <option value="outbound">Outbound Only</option>
-                    </select>
                   </div>
 
                   {/* Message Type Filter */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <i className="bi bi-filetype-doc text-primary-600 text-sm"></i>
                       Message Type
                     </label>
                     <select
                       value={whatsappFilters.messageType || 'all'}
                       onChange={(e) => setWhatsappFilters(prev => ({ ...prev, messageType: e.target.value as any }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white transition-all cursor-pointer"
                     >
                       <option value="all">All Types</option>
                       <option value="text">Text</option>
@@ -797,31 +675,103 @@ export default function CommunicationPage() {
                     </select>
                   </div>
 
-                  {/* Registration Status Filter */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Registration Status
-                    </label>
-                    <select
-                      value={whatsappFilters.registrationStatus || 'all'}
-                      onChange={(e) => setWhatsappFilters(prev => ({ ...prev, registrationStatus: e.target.value as any }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="all">All Users</option>
-                      <option value="registered">Any Registered User</option>
-                      <option value="pending">Pending Registration</option>
-                      <option value="invited">Invited Users</option>
-                      <option value="cancelled">Cancelled Registration</option>
-                    </select>
-                    <div className="mt-1 text-xs text-gray-500">
-                      Filter by registration status of message participants
-                    </div>
-                  </div> */}
-
                   
                 </div>
+
+                {/* Second Row - Time Value Input or Date Range Inputs */}
+                <div className='mt-3 flex flex-wrap gap-3 items-end'>
+                  {/* Search Messages */}
+                  <div className="flex-[2] min-w-[240px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <MagnifyingGlassIcon className="w-4 h-4 text-primary-600" />
+                      Search Messages
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Search by phone number, user name, or message content..."
+                      value={messageContent}
+                      onChange={(e) => setMessageContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          loadMessages();
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
+                    />
+                  </div>
+                  {/* Time Period Filter */}
+                  <div className="flex-0 min-w-[180px]">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                      <i className="bi bi-calendar-range text-primary-600 text-sm"></i>
+                      Time Period
+                    </label>
+                    <select
+                      value={whatsappFilters.timeRange?.type || 'last_days'}
+                      onChange={(e) => setWhatsappFilters(prev => ({ 
+                        ...prev, 
+                        timeRange: { 
+                          type: e.target.value as any,
+                          value: e.target.value === 'date_range' ? undefined : prev.timeRange?.value,
+                          startDate: e.target.value === 'date_range' ? prev.timeRange?.startDate : undefined,
+                          endDate: e.target.value === 'date_range' ? prev.timeRange?.endDate : undefined
+                        }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white transition-all cursor-pointer"
+                    >
+                      <option value="last_hours">Last Hours</option>
+                      <option value="last_days">Last Days</option>
+                      <option value="date_range">Custom Date Range</option>
+                    </select>
+                  </div>
+                  {whatsappFilters.timeRange?.type !== 'date_range' ? (
+                    <div className="flex gap-3 mt-3">
+                      <div className="flex-1 max-w-[200px]">
+                        <input
+                          type="number"
+                          min="0"
+                          value={whatsappFilters.timeRange?.value || ''}
+                          onChange={(e) => setWhatsappFilters(prev => ({ 
+                            ...prev, 
+                            timeRange: { ...prev.timeRange!, value: parseInt(e.target.value) || 0 }
+                          }))}
+                          placeholder={whatsappFilters.timeRange?.type === 'last_hours' ? 'Enter hours' : 'Enter days'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3 mt-3">
+                      <div className="flex-1 max-w-[200px]">
+                        <input
+                          type="date"
+                          value={whatsappFilters.timeRange?.startDate || ''}
+                          onChange={(e) => setWhatsappFilters(prev => ({ 
+                            ...prev, 
+                            timeRange: { ...prev.timeRange!, startDate: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
+                          placeholder="From Date"
+                        />
+                      </div>
+                      <div className="flex-1 max-w-[200px]">
+                        <input
+                          type="date"
+                          value={whatsappFilters.timeRange?.endDate || ''}
+                          onChange={(e) => setWhatsappFilters(prev => ({ 
+                            ...prev, 
+                            timeRange: { ...prev.timeRange!, endDate: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm transition-all"
+                          placeholder="To Date"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
               </div>
-            )}
+            </div>
 
             {/* WhatsApp Messages Display */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -921,8 +871,8 @@ export default function CommunicationPage() {
                             {/* Message Content */}
                             <div className={`rounded-lg p-4 mb-2 ${
                               message.direction === MessageDirection.OUTBOUND
-                                ? 'bg-primary-50 ml-12'
-                                : 'bg-white border border-gray-100 mr-12'
+                                ? 'bg-primary-50 ml-[200px]'
+                                : 'bg-white border border-gray-100 mr-[200px]'
                             }`}>
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
@@ -1029,19 +979,12 @@ export default function CommunicationPage() {
                                             />
                                           </div>
                                         ) : (
-                                          <a 
-                                            href={message.mediaUrl} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg ${
-                                              message.direction === MessageDirection.OUTBOUND
-                                                ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
-                                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                            }`}
-                                          >
-                                            <i className="bi bi-download"></i>
-                                            <span>Download {message.type.toLowerCase()}</span>
-                                          </a>
+                                          <AuthenticatedAttachment
+                                            src={message.mediaUrl}
+                                            fileType={message.type}
+                                            direction={message.direction === MessageDirection.OUTBOUND ? 'outbound' : 'inbound'}
+                                            fileName={message.metadata?.fileName || undefined}
+                                          />
                                         )}
                                       </div>
                                       {message.metadata?.caption && (

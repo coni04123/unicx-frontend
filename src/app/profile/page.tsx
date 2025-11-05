@@ -38,7 +38,6 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -98,8 +97,8 @@ export default function ProfilePage() {
 
       const updatedProfile = await api.updateProfile(updateData);
       
-      // Update localStorage if email was changed and verified
-      if (updateData.email && !updatedProfile.pendingEmail && authUser) {
+      // Update localStorage if email was changed
+      if (updateData.email && authUser) {
         const updatedUser = {
           ...authUser,
           email: updatedProfile.email,
@@ -110,12 +109,7 @@ export default function ProfilePage() {
       }
 
       setProfile(updatedProfile);
-      
-      if (updateData.email && updatedProfile.pendingEmail) {
-        setSuccess('Profile updated! A verification email has been sent to your new email address. Please check your inbox and click the verification link.');
-      } else {
-        setSuccess('Profile updated successfully!');
-      }
+      setSuccess('Profile updated successfully!');
       
       setIsEditing(false);
       setTimeout(() => setSuccess(''), 5000);
@@ -124,21 +118,6 @@ export default function ProfilePage() {
       setError(err.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    try {
-      setIsResendingVerification(true);
-      setError('');
-      await api.resendEmailVerification();
-      setSuccess('Verification email sent successfully! Please check your inbox.');
-      setTimeout(() => setSuccess(''), 5000);
-    } catch (err: any) {
-      console.error('Error resending verification:', err);
-      setError(err.message || 'Failed to resend verification email');
-    } finally {
-      setIsResendingVerification(false);
     }
   };
 
@@ -161,8 +140,6 @@ export default function ProfilePage() {
       </DashboardLayout>
     );
   }
-
-  const hasPendingEmail = profile.pendingEmail && profile.pendingEmail !== profile.email;
 
   return (
     <DashboardLayout>
@@ -192,33 +169,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Pending Email Verification Notice */}
-        {hasPendingEmail && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-800">
-                  Email Verification Required
-                </p>
-                <p className="text-sm text-yellow-700 mt-1">
-                  A verification email has been sent to <strong>{profile.pendingEmail}</strong>. 
-                  Please check your inbox and click the verification link to complete the email change.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendVerification}
-                  disabled={isResendingVerification}
-                  className="mt-2"
-                >
-                  {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile Card */}
           <div className="lg:col-span-1">
@@ -236,12 +186,7 @@ export default function ProfilePage() {
                     {profile.firstName} {profile.lastName}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {hasPendingEmail ? profile.pendingEmail : profile.email}
-                    {hasPendingEmail && (
-                      <span className="ml-2 text-yellow-600">
-                        <ExclamationTriangleIcon className="h-4 w-4 inline" />
-                      </span>
-                    )}
+                    {profile.email}
                   </p>
                   <div className="flex items-center justify-center space-x-2 mt-3">
                     <Badge variant="secondary">
@@ -332,11 +277,6 @@ export default function ProfilePage() {
                       placeholder={tCommon('placeholder.email')}
                     />
                   </div>
-                  {hasPendingEmail && (
-                    <p className="text-xs text-yellow-600 mt-1">
-                      Current email: {profile.email}. Verification pending for: {profile.pendingEmail}
-                    </p>
-                  )}
                 </div>
               </CardContent>
             </Card>
