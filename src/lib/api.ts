@@ -374,6 +374,31 @@ class ApiClient {
     return this.post('/users/bulk-invite', data);
   }
 
+  async bulkUploadUsers(data: {
+    users: Array<{
+      phoneNumber: string;
+      email?: string;
+      firstName: string;
+      lastName: string;
+      entityPathNames: string[];
+    }>;
+    tenantId: string;
+  }): Promise<any> {
+    return this.post('/users/bulk-upload', data);
+  }
+
+  async bulkUploadManagers(data: {
+    managers: Array<{
+      email: string;
+      firstName: string;
+      lastName: string;
+      entityPathNames: string[];
+    }>;
+    tenantId: string;
+  }): Promise<any> {
+    return this.post('/users/bulk-upload-managers', data);
+  }
+
   async updateUser(id: string, data: {
     phoneNumber?: string;
     email?: string;
@@ -605,23 +630,31 @@ class ApiClient {
   // Audit Logs APIs
   async getAuditLogs(filters?: {
     userId?: string;
-    action?: string;
-    resource?: string;
-    resourceId?: string;
+    tenantId?: string;
+    method?: string;
+    path?: string;
+    statusCode?: number;
+    status?: string;
+    ipAddress?: string;
     startDate?: string;
     endDate?: string;
+    search?: string;
+    page?: number;
     limit?: number;
-    offset?: number;
-  }): Promise<{ logs: any[]; total: number; limit: number; offset: number }> {
+  }): Promise<{ logs: any[]; total: number; page: number; limit: number; totalPages: number }> {
     const params = new URLSearchParams();
     if (filters?.userId) params.append('userId', filters.userId);
-    if (filters?.action) params.append('action', filters.action);
-    if (filters?.resource) params.append('resource', filters.resource);
-    if (filters?.resourceId) params.append('resourceId', filters.resourceId);
+    if (filters?.tenantId) params.append('tenantId', filters.tenantId);
+    if (filters?.method) params.append('method', filters.method);
+    if (filters?.path) params.append('path', filters.path);
+    if (filters?.statusCode) params.append('statusCode', filters.statusCode.toString());
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.ipAddress) params.append('ipAddress', filters.ipAddress);
     if (filters?.startDate) params.append('startDate', filters.startDate);
     if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.offset) params.append('offset', filters.offset.toString());
 
     const queryString = params.toString();
     return this.get(`/audit/logs${queryString ? `?${queryString}` : ''}`);

@@ -66,6 +66,18 @@ export default function CommunicationPage() {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['entity-x']));
   const [showStructurePanel, setShowStructurePanel] = useState(false);
   
+  // User filter panel state
+  const [showUserPanel, setShowUserPanel] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  
+  // User pagination state
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize] = useState(20);
+  const [userTotal, setUserTotal] = useState(0);
+  const [userTotalPages, setUserTotalPages] = useState(0);
+  
   // WhatsApp monitoring filters
   const [whatsappFilters, setWhatsappFilters] = useState<FilterOptions>({
     entityUserNumber: '',
@@ -81,17 +93,33 @@ export default function CommunicationPage() {
   // Message content search state
   const [messageContent, setMessageContent] = useState('');
 
-  // Load messages when filters, pagination, or selected entity changes
+  // Load messages when filters, pagination, selected entity, or selected user changes
   useEffect(() => {
     loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, whatsappFilters, selectedEntityPath]);
+  }, [currentPage, pageSize, whatsappFilters, selectedEntityPath, selectedUserId]);
 
-  // Load entities and users
+  // Load entities
   useEffect(() => {
     loadEntities();
-    loadUsers();
   }, []);
+
+  // Load users when search query or pagination changes (with debounce)
+  useEffect(() => {
+    if (showUserPanel) {
+      const timer = setTimeout(() => {
+        loadUsers();
+      }, userSearchQuery ? 300 : 0); // Debounce search by 300ms, but load immediately if no search
+
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userSearchQuery, userPage, selectedEntityPath, showUserPanel]);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearchQuery]);
 
   const loadMessages = async () => {
     try {
@@ -139,6 +167,14 @@ export default function CommunicationPage() {
 
       if (whatsappFilters.isExternal !== undefined) {
         filters.isExternal = whatsappFilters.isExternal;
+      }
+
+      // Add userId filter if a user is selected
+      if (selectedUserId) {
+        const selectedUser = users.find(u => u._id === selectedUserId);
+        if (selectedUser && selectedUser.phoneNumber) {
+          filters.phoneNumber = selectedUser.phoneNumber;
+        }
       }
 
       // Enhanced search: phone number, user name, or message content
@@ -248,10 +284,45 @@ export default function CommunicationPage() {
 
   const loadUsers = async () => {
     try {
-      const data = await api.getUsers();
+      setIsLoadingUsers(true);
+      
+      // Build filters for API call
+      const filters: any = {
+        role: 'User', // Only fetch users (exclude managers/TenantAdmin)
+        page: userPage,
+        limit: userPageSize,
+      };
+
+      // Add search query if provided
+      if (userSearchQuery.trim()) {
+        filters.search = userSearchQuery.trim();
+      }
+
+      // Filter by entity hierarchy if user is not SystemAdmin
+      if (currentUser?.role !== 'SystemAdmin') {
+        if (selectedEntityPath && entities.length > 0) {
+          const selectedEntity = findEntityByPath(entities, selectedEntityPath);
+          if (selectedEntity) {
+            filters.entityId = selectedEntity._id;
+          }
+        } else if (currentUser?.entityId) {
+          filters.entityId = currentUser.entityId;
+        }
+      }
+
+      // Call API with filters
+      const data = await api.getUsers(filters);
       setUsers(data.users);
+      setUserTotal(data.total);
+      setUserTotalPages(data.totalPages);
+      setUserPage(data.page);
     } catch (err: any) {
       console.error('Error loading users:', err);
+      setUsers([]);
+      setUserTotal(0);
+      setUserTotalPages(0);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -516,11 +587,36 @@ export default function CommunicationPage() {
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setShowStructurePanel(!showStructurePanel)}
-              className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              onClick={() => {
+                if (!showUserPanel) {
+                  setShowUserPanel(true);
+                  setShowStructurePanel(false);
+                } else {
+                  setShowUserPanel(false);
+                }
+              }}
+              className={`inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm ${
+                showUserPanel
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+              }`}
+            >
+              <UserGroupIcon className="w-4 h-4 mr-2" />
+              Filter by User
+            </button>
+            <button
+              onClick={() => {
+                if (!showStructurePanel) {
+                  setShowStructurePanel(true);
+                  setShowUserPanel(false);
+                } else {
+                  setShowStructurePanel(false);
+                }
+              }}
+              className={`inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm ${
                 showStructurePanel
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400'
               }`}
             >
               <BuildingOfficeIcon className="w-4 h-4 mr-2" />
@@ -531,6 +627,193 @@ export default function CommunicationPage() {
 
         {/* Main Content Layout */}
         <div className="flex space-x-6">
+          {/* User Filter Panel */}
+          {showUserPanel && (
+            <div className="w-80 flex-shrink-0">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                        <UserGroupIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Filter by User</h3>
+                        <p className="text-sm text-gray-600">Select user to filter</p>
+                      </div>
+                    </div>
+                    {selectedUserId && (
+                      <button
+                        onClick={() => setSelectedUserId('')}
+                        className="text-xs text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 px-2 py-1 rounded shadow-sm transition-colors"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Search Box */}
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      placeholder="Search users by name or phone number..."
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <div className="p-4 max-h-[600px] overflow-y-auto">
+                  {/* Show All Users Option */}
+                  <div
+                    className={`flex items-center py-2.5 px-3 rounded-lg cursor-pointer transition-all duration-200 mb-2 ${
+                      !selectedUserId 
+                        ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-500 shadow-sm' 
+                        : 'hover:bg-gray-50 text-gray-700'
+                    }`}
+                    onClick={() => setSelectedUserId('')}
+                  >
+                    <div className="mr-3 flex-shrink-0">
+                      <UserGroupIcon className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-medium ${!selectedUserId ? 'text-blue-900' : 'text-gray-900'}`}>
+                          All Users
+                        </span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          {userTotal}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* User List */}
+                  <div className="space-y-1">
+                    {isLoadingUsers ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <ArrowPathIcon className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-600" />
+                        <p className="text-sm">Loading users...</p>
+                      </div>
+                    ) : users.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <UserGroupIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No users found</p>
+                        {userSearchQuery && (
+                          <p className="text-xs mt-1">Try adjusting your search</p>
+                        )}
+                      </div>
+                    ) : (
+                      users.map((user: any) => {
+                        const isSelected = selectedUserId === user._id;
+                        const userMessageCount = messages.filter((msg: Message) => 
+                          msg.from === user.phoneNumber || msg.to === user.phoneNumber
+                        ).length;
+                        
+                        return (
+                          <div
+                            key={user._id}
+                            className={`flex items-center py-2.5 px-3 rounded-lg cursor-pointer transition-all duration-200 group ${
+                              isSelected 
+                                ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-500 shadow-sm' 
+                                : 'hover:bg-gray-50 text-gray-700 hover:shadow-sm'
+                            }`}
+                            onClick={() => setSelectedUserId(user._id)}
+                          >
+                            <div className="mr-3 flex-shrink-0">
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold ${
+                                isSelected 
+                                  ? 'bg-blue-200 text-blue-700' 
+                                  : 'bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700 group-hover:from-blue-100 group-hover:to-blue-200'
+                              }`}>
+                                {user.firstName?.charAt(0).toUpperCase()}{user.lastName?.charAt(0).toUpperCase()}
+                              </div>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium truncate ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                                    {user.firstName} {user.lastName}
+                                  </p>
+                                  {user.phoneNumber && (
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                      <i className="bi bi-telephone text-xs text-gray-400"></i>
+                                      <p className="text-xs text-gray-600 truncate">
+                                        {user.phoneNumber}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                {userMessageCount > 0 && (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ml-2 ${
+                                    isSelected ? 'bg-blue-200 text-blue-800' : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {userMessageCount}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Entity Name Badge */}
+                              {user.entityId?.name && (
+                                <div className="mt-1.5">
+                                  <span className="inline-flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    <BuildingOfficeIcon className="w-3 h-3 mr-1 text-gray-500" />
+                                    {user.entityId.name}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {userTotalPages > 1 && !isLoadingUsers && (
+                    <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-gray-600">
+                            Showing <span className="font-medium">{(userPage - 1) * userPageSize + 1}</span>-
+                            <span className="font-medium">{Math.min(userPage * userPageSize, userTotal)}</span> of{' '}
+                            <span className="font-medium">{userTotal}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setUserPage(Math.max(1, userPage - 1))}
+                            disabled={userPage === 1}
+                            className="p-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Previous page"
+                          >
+                            <ChevronLeftIcon className="w-4 h-4" />
+                          </button>
+                          <span className="text-xs text-gray-600 px-2">
+                            Page {userPage} of {userTotalPages}
+                          </span>
+                          <button
+                            onClick={() => setUserPage(Math.min(userTotalPages, userPage + 1))}
+                            disabled={userPage === userTotalPages}
+                            className="p-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Next page"
+                          >
+                            <ChevronRightIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Elastic Structure Panel */}
           {showStructurePanel && (
             <div className="w-80 flex-shrink-0">

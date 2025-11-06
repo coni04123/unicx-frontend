@@ -20,6 +20,8 @@ import {
   ChevronDownIcon,
   CheckIcon,
   UserGroupIcon,
+  ArrowUpTrayIcon,
+  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 
 interface User {
@@ -100,6 +102,24 @@ export default function MonitoringManagersPage() {
     entityId: '',
   });
   const [isInviting, setIsInviting] = useState(false);
+
+  // Bulk upload state
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [bulkUploadFile, setBulkUploadFile] = useState<File | null>(null);
+  const [bulkUploadResults, setBulkUploadResults] = useState<any>(null);
+
+  useEffect(() => {
+    // Load xlsx library dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   useEffect(() => {
     loadManagers();
@@ -356,20 +376,136 @@ export default function MonitoringManagersPage() {
     }
   };
 
+  const handleBulkUpload = async () => {
+    if (!bulkUploadFile) {
+      setError('Please select a file to upload');
+      return;
+    }
+
+    setIsBulkUploading(true);
+    setError('');
+    setBulkUploadResults(null);
+
+    try {
+      // Parse the Excel/CSV file
+      const fileReader = new FileReader();
+      
+      fileReader.onload = async (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = (window as any).XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = (window as any).XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          // Skip header row and process data
+          const managers = [];
+          for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row[1]) continue; // Skip if no first name
+
+            const firstName = String(row[1] || '').trim();
+            const lastName = String(row[2] || '').trim();
+            const email = row[3] ? String(row[3]).trim() : '';
+
+            // Extract entity path names (columns from index 4 onwards)
+            const entityPathNames = [];
+            for (let j = 4; j < row.length; j++) {
+              if (row[j] && String(row[j]).trim() !== '') {
+                entityPathNames.push(String(row[j]).trim());
+              }
+            }
+
+            if (firstName && lastName && email && entityPathNames.length > 0) {
+              managers.push({
+                firstName,
+                lastName,
+                email,
+                entityPathNames,
+              });
+            }
+          }
+
+          if (managers.length === 0) {
+            setError('No valid managers found in the file');
+            setIsBulkUploading(false);
+            return;
+          }
+
+          // Upload managers
+          const result = await api.bulkUploadManagers({
+            managers,
+            tenantId: currentUser?.tenantId || '',
+          });
+
+          setBulkUploadResults(result);
+          
+          if (result.success > 0) {
+            setSuccess(`Successfully uploaded ${result.success} manager(s). ${result.failed > 0 ? `${result.failed} failed.` : ''}`);
+            await loadManagers();
+            
+            // Auto-close modal after 3 seconds if all successful
+            if (result.failed === 0) {
+              setTimeout(() => {
+                setShowBulkUploadModal(false);
+                setBulkUploadFile(null);
+                setBulkUploadResults(null);
+              }, 3000);
+            }
+          } else {
+            setError(`All ${result.failed} upload(s) failed. Please check the results.`);
+          }
+        } catch (err: any) {
+          console.error('Error parsing file:', err);
+          setError(err.message || 'Failed to parse file');
+        } finally {
+          setIsBulkUploading(false);
+        }
+      };
+
+      fileReader.readAsBinaryString(bulkUploadFile);
+    } catch (err: any) {
+      console.error('Error during bulk upload:', err);
+      setError(err.message || 'Failed to upload managers');
+      setIsBulkUploading(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    // Create a sample CSV template
+    const headers = ['No', 'Firstname', 'Lastname', 'Email', 'Entity Path Columns...'];
+    const sampleData = [
+      ['1', 'John', 'Doe', 'john.doe@example.com', '2N5 Global', 'Executive Office'],
+      ['2', 'Ronald', 'White', 'ronald.white@example.com', '2N5 Global', 'Platform & Infrastructure', 'Engineering'],
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      ...sampleData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'managers-bulk-upload-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const getStatusBadge = (status: string) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
-    switch (status) {
-      case 'registered':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'pending':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'invited':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
-      case 'cancelled':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-    }
+    const statusMap: Record<string, { classes: string; label: string }> = {
+      'registered': { classes: 'bg-green-100 text-green-800', label: 'Registered' },
+      'pending': { classes: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
+      'invited': { classes: 'bg-blue-100 text-blue-800', label: 'Invited' },
+      'cancelled': { classes: 'bg-red-100 text-red-800', label: 'Cancelled' },
+    };
+    
+    const statusInfo = statusMap[status] || { classes: 'bg-gray-100 text-gray-800', label: status };
+    return { classes: `${baseClasses} ${statusInfo.classes}`, label: statusInfo.label };
   };
 
   // Helper function to find entity by ID (recursive)
@@ -508,6 +644,13 @@ export default function MonitoringManagersPage() {
             >
               <FunnelIcon className="w-4 h-4 mr-2" />
               Filters
+            </button>
+            <button
+              onClick={() => setShowBulkUploadModal(true)}
+              className="inline-flex items-center px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+            >
+              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+              Bulk Upload
             </button>
             <button
               onClick={() => {
@@ -713,9 +856,15 @@ export default function MonitoringManagersPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={getStatusBadge(manager.registrationStatus || 'invited')}>
-                              {manager.registrationStatus || 'invited'}
-                            </span>
+                            {(() => {
+                              const status = manager.registrationStatus || 'invited';
+                              const badge = getStatusBadge(status);
+                              return (
+                                <span className={badge.classes}>
+                                  {badge.label}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
@@ -959,6 +1108,151 @@ export default function MonitoringManagersPage() {
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Upload Modal */}
+        {showBulkUploadModal && (
+          <div className="!mt-[0px] fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-[99999] flex items-center justify-center">
+            <div className="relative mx-auto p-5 border-0 w-[600px] shadow-xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Bulk Upload Managers
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowBulkUploadModal(false);
+                      setBulkUploadFile(null);
+                      setBulkUploadResults(null);
+                      setError('');
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <i className="bi bi-x-lg"></i>
+                  </button>
+                </div>
+
+                {/* Error message */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+
+                {!bulkUploadResults ? (
+                  <div className="space-y-4">
+                    {/* Instructions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">Instructions</h4>
+                      <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                        <li>Download the template file to see the required format</li>
+                        <li>Column format: No | First Name | Last Name | Email | Entity Path...</li>
+                        <li>Entity Path: List entity names from root to target (e.g., 2N5 Global, Executive Office)</li>
+                        <li>Supported formats: Excel (.xlsx, .xls) or CSV (.csv)</li>
+                      </ul>
+                    </div>
+
+                    {/* Download Template Button */}
+                    <button
+                      onClick={downloadTemplate}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
+                      Download Template
+                    </button>
+
+                    {/* File Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload File *
+                      </label>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setBulkUploadFile(file);
+                            setError('');
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      {bulkUploadFile && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Selected: {bulkUploadFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Results Summary */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                        <div className="text-sm text-green-600">Success</div>
+                        <div className="text-2xl font-bold text-green-800">{bulkUploadResults.success}</div>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                        <div className="text-sm text-red-600">Failed</div>
+                        <div className="text-2xl font-bold text-red-800">{bulkUploadResults.failed}</div>
+                      </div>
+                    </div>
+
+                    {/* Failed Records */}
+                    {bulkUploadResults.errors && bulkUploadResults.errors.length > 0 && (
+                      <div className="max-h-60 overflow-y-auto">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">Failed Records</h4>
+                        <div className="space-y-2">
+                          {bulkUploadResults.errors.map((err: any, idx: number) => (
+                            <div key={idx} className="bg-red-50 border border-red-200 rounded-md p-3">
+                              <div className="text-sm text-red-800">
+                                <strong>{err.manager.firstName} {err.manager.lastName}</strong> ({err.manager.email})
+                              </div>
+                              <div className="text-xs text-red-600 mt-1">{err.error}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowBulkUploadModal(false);
+                      setBulkUploadFile(null);
+                      setBulkUploadResults(null);
+                      setError('');
+                    }}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                  >
+                    {bulkUploadResults ? 'Close' : 'Cancel'}
+                  </button>
+                  {!bulkUploadResults && (
+                    <button
+                      onClick={handleBulkUpload}
+                      disabled={!bulkUploadFile || isBulkUploading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+                    >
+                      {isBulkUploading ? (
+                        <>
+                          <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+                          Upload Managers
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
