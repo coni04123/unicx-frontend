@@ -1306,7 +1306,7 @@ export default function UserManagementPage() {
                                 return (
                                   <span className={badge.classes}>
                                     {badge.label}
-                                  </span>
+                              </span>
                                 );
                               })()}
                               {!isViewingTenantAdmins && user.whatsappSession?.status === 'ready' && (
@@ -1861,7 +1861,7 @@ export default function UserManagementPage() {
                           return (
                             <span className={badge.classes}>
                               {badge.label}
-                            </span>
+                        </span>
                           );
                         })()}
                       </div>
