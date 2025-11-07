@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useMessageTranslation, translateApiError } from '@/lib/utils/messageTranslator';
+import { useTranslation } from '@/hooks/useTranslation';
 import WhatsAppHealthBadge from '@/components/whatsapp/WhatsAppHealthBadge';
 import {
   PlusIcon,
@@ -110,6 +112,9 @@ interface EditUserForm {
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const { canManageUsers } = usePermissions();
+  const translateMessage = useMessageTranslation();
+  const t = useTranslation('users');
+  const tCommon = useTranslation('common');
   const [users, setUsers] = useState<User[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -219,95 +224,11 @@ export default function UserManagementPage() {
     };
   }, []);
 
-  // EventSource for WhatsApp events
+  // Load initial data
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/whatsapp/events?token=${token}`, {
-      withCredentials: true
-    });
-
-    eventSource.onmessage = (event) => {
-      const whatsappEvent = JSON.parse(event.data);
-      const { type, sessionId, data } = whatsappEvent;
-
-      setUsers(prevUsers => prevUsers.map(user => {
-        // Only update if this event is for this user's session
-        if (!user.whatsappSession || user.whatsappSession.sessionId !== sessionId) return user;
-
-        const updatedUser = { ...user };
-        switch (type) {
-          case 'status':
-            updatedUser.whatsappSession = {
-              ...user.whatsappSession,
-              status: data.status
-            };
-            break;
-          case 'qr':
-            updatedUser.whatsappSession = {
-              ...user.whatsappSession,
-              qrCode: data.qrCode,
-              qrCodeExpiresAt: data.expiresAt,
-              status: 'qr_required'
-            };
-            break;
-          case 'health':
-            updatedUser.whatsappSession = {
-              ...user.whatsappSession,
-              healthStatus: data
-            };
-            break;
-        }
-        return updatedUser as User;
-      }));
-
-      // If QR modal is open and event is for the selected user, update modal state
-      if (selectedUserQR?.whatsappSession?.sessionId === sessionId) {
-        setSelectedUserQR(prev => {
-          if (!prev || !prev.whatsappSession) return prev;
-
-          const updatedUser = { ...prev };
-          switch (type) {
-            case 'status':
-              updatedUser.whatsappSession = {
-                ...prev.whatsappSession,
-                status: data.status
-              };
-              break;
-            case 'qr':
-              updatedUser.whatsappSession = {
-                ...prev.whatsappSession,
-                qrCode: data.qrCode,
-                qrCodeExpiresAt: data.expiresAt,
-                status: 'qr_required'
-              };
-              break;
-            case 'health':
-              updatedUser.whatsappSession = {
-                ...prev.whatsappSession,
-                healthStatus: data
-              };
-              break;
-            default:
-              return prev;
-          }
-          return updatedUser as User;
-        });
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('EventSource failed:', error);
-      eventSource.close();
-    };
-
-    // Load initial data
     loadUsers();
     loadEntities();
     loadStats();
-
-    return () => {
-      eventSource.close();
-    };
   }, []);
 
   // Reload users when filters or pagination change
@@ -390,7 +311,8 @@ export default function UserManagementPage() {
       setCurrentPage(response.page);
     } catch (err: any) {
       console.error('Error loading users:', err);
-      setError(err.message || 'Failed to load users');
+      const translatedError = translateApiError(err.message || 'Failed to load users', translateMessage);
+      setError(translatedError);
     } finally {
       setIsLoading(false);
     }
@@ -644,7 +566,8 @@ export default function UserManagementPage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       console.error('Error inviting user:', err);
-      setError(err.message || 'Failed to invite user');
+      const translatedError = translateApiError(err.message || 'Failed to invite user', translateMessage);
+      setError(translatedError);
     } finally {
       setIsInviting(false);
     }
@@ -676,7 +599,8 @@ export default function UserManagementPage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       console.error('Error updating user:', err);
-      setError(err.message || 'Failed to update user');
+      const translatedError = translateApiError(err.message || 'Failed to update user', translateMessage);
+      setError(translatedError);
     } finally {
       setIsEditing(false);
     }
@@ -698,7 +622,8 @@ export default function UserManagementPage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       console.error('Error deleting user:', err);
-      setError(err.message || 'Failed to delete user');
+      const translatedError = translateApiError(err.message || 'Failed to delete user', translateMessage);
+      setError(translatedError);
     }
   };
 
@@ -996,9 +921,9 @@ export default function UserManagementPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
             <p className="mt-2 text-sm text-gray-700">
-              Navigate through entity structure and manage users with WhatsApp connections
+              {t('description')}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -1011,7 +936,7 @@ export default function UserManagementPage() {
               }`}
             >
               <BuildingOfficeIcon className="w-4 h-4 mr-2" />
-              Entity Structure
+              {t('entityStructure')}
             </button>
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -1022,14 +947,14 @@ export default function UserManagementPage() {
               }`}
             >
               <FunnelIcon className="w-4 h-4 mr-2" />
-              Filters
+              {t('filters')}
             </button>
             <button
               onClick={() => setShowBulkUploadModal(true)}
               className="inline-flex items-center px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
             >
               <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-              Bulk Upload
+              {t('bulkUpload')}
             </button>
             <button
               onClick={() => {
@@ -1046,7 +971,7 @@ export default function UserManagementPage() {
               className="inline-flex items-center px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
-              Add User
+              {t('addUser')}
             </button>
           </div>
         </div>
@@ -1071,8 +996,8 @@ export default function UserManagementPage() {
                         <BuildingOfficeIcon className="w-5 h-5 text-primary-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Entity Structure</h3>
-                        <p className="text-sm text-gray-600">Navigate and filter</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('entityStructure')}</h3>
+                        <p className="text-sm text-gray-600">{t('navigateAndFilter')}</p>
                       </div>
                     </div>
                     {selectedEntityPath && (
@@ -1080,7 +1005,7 @@ export default function UserManagementPage() {
                         onClick={() => selectEntityPath('')}
                         className="text-xs text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
                       >
-                        Clear
+                        {t('clear')}
                       </button>
                     )}
                   </div>
@@ -1099,7 +1024,7 @@ export default function UserManagementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={`text-sm font-medium ${!selectedEntityPath ? 'text-primary-900' : 'text-gray-900'}`}>
-                          All Users
+                          {t('allUsers')}
                         </span>
                         {/* <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           !selectedEntityPath ? 'bg-primary-200 text-primary-800' : 'bg-gray-100 text-gray-800'
@@ -1115,8 +1040,8 @@ export default function UserManagementPage() {
                     {entities.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                        <p className="text-sm">No entities found</p>
-                        <p className="text-xs mt-1">Create entities to organize users</p>
+                        <p className="text-sm">{t('noEntitiesFound')}</p>
+                        <p className="text-xs mt-1">{t('createEntitiesToOrganize')}</p>
                       </div>
                     ) : (
                       entities.map(entity => renderEntityNode(entity))
@@ -1133,7 +1058,7 @@ export default function UserManagementPage() {
             {showAdvancedFilters && (
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('filters')}</h3>
                   <button
                     onClick={() => {
                       setStatusFilter('');
@@ -1143,20 +1068,20 @@ export default function UserManagementPage() {
                     }}
                     className="text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md transition-colors"
                   >
-                    Clear All Filters
+                    {t('clearAllFilters')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Search */}
                   <div className="lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Search Users
+                      {t('searchUsers')}
                     </label>
                     <div className="relative">
                       <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search by name, email, or phone..."
+                        placeholder={t('searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1186,18 +1111,18 @@ export default function UserManagementPage() {
                   {!isViewingTenantAdmins && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        WhatsApp Status
+                        {t('whatsappStatus')}
                       </label>
                       <select
                         value={whatsappFilter}
                         onChange={(e) => setWhatsappFilter(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
-                        <option value="">All Status</option>
-                        <option value="connected">Connected</option>
-                        <option value="disconnected">Disconnected</option>
-                        <option value="connecting">Connecting</option>
-                        <option value="failed">Failed</option>
+                        <option value="">{t('allStatus')}</option>
+                        <option value="connected">{t('connected')}</option>
+                        <option value="disconnected">{t('disconnected')}</option>
+                        <option value="connecting">{t('connecting')}</option>
+                        <option value="failed">{t('failed')}</option>
                       </select>
                     </div>
                   )}
@@ -1213,13 +1138,13 @@ export default function UserManagementPage() {
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                       <UserIcon className="w-5 h-5 text-green-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Users</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{t('users')}</h3>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-sm text-gray-600">
-                      <span className="font-medium">{filteredUsers.length}</span> users
+                      <span className="font-medium">{filteredUsers.length}</span> {t('users').toLowerCase()}
                       {filteredUsers.length !== users.length && (
-                        <span className="text-gray-500"> of {users.length}</span>
+                        <span className="text-gray-500"> {t('of')} {users.length}</span>
                       )}
                     </div>
                   </div>
@@ -1231,33 +1156,33 @@ export default function UserManagementPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {isViewingTenantAdmins ? 'Manager' : 'User'}
+                        {isViewingTenantAdmins ? t('manager') : t('user')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
+                        {t('email')}
                       </th>
                       {/* Show Contact only for Users, not Managers */}
                       {!isViewingTenantAdmins && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Contact
+                          {t('contact')}
                         </th>
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        {t('status')}
                       </th>
                       {/* Show WhatsApp & QR Code only for Users, not Managers */}
                       {!isViewingTenantAdmins && (
                         <>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            WhatsApp
+                            {t('whatsapp')}
                           </th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            QR Code
+                            {t('qrCode')}
                           </th>
                         </>
                       )}
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        {t('actions')}
                       </th>
                     </tr>
                   </thead>
@@ -1266,7 +1191,7 @@ export default function UserManagementPage() {
                       <tr>
                         <td colSpan={isViewingTenantAdmins ? 5 : 8} className="px-6 py-12 text-center text-gray-500">
                           <UserIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p>No {isViewingTenantAdmins ? 'managers' : isViewingUsers ? 'users' : 'users'} found</p>
+                          <p>{isViewingTenantAdmins ? t('noManagersFound') : t('noUsersFound')}</p>
                         </td>
                       </tr>
                     ) : (
@@ -1284,7 +1209,7 @@ export default function UserManagementPage() {
                                   {user.firstName} {user.lastName}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  {user.role === 'TenantAdmin' ? 'Manager' : user.role}
+                                  {user.role === 'TenantAdmin' ? t('manager') : user.role}
                                 </div>
                               </div>
                             </div>
@@ -1295,7 +1220,7 @@ export default function UserManagementPage() {
                           {/* Show Contact only for Users, not Managers */}
                           {!isViewingTenantAdmins && (
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">{user.phoneNumber || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{user.phoneNumber || t('nA')}</div>
                             </td>
                           )}
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1331,7 +1256,7 @@ export default function UserManagementPage() {
                                   )}
                                   {user.whatsappSession?.lastActivityAt && (
                                     <span className="text-xs text-gray-400">
-                                      Last active: {new Date(user.whatsappSession.lastActivityAt).toLocaleString()}
+                                      {t('lastActive')}: {new Date(user.whatsappSession.lastActivityAt).toLocaleString()}
                                     </span>
                                   )}
                                 </div>
@@ -1340,7 +1265,7 @@ export default function UserManagementPage() {
                                 <button
                                   onClick={() => showQRCode(user)}
                                   className="inline-flex items-center text-blue-600 hover:text-blue-900"
-                                  title="View QR Code"
+                                  title={t('viewQRCode')}
                                 >
                                   <QrCodeIcon className="w-5 h-5" />
                                 </button>
@@ -1370,7 +1295,7 @@ export default function UserManagementPage() {
                               <button
                                 onClick={() => deleteUser(user._id, `${user.firstName} ${user.lastName}`)}
                                 className="text-red-600 hover:text-red-900"
-                                title="Delete user"
+                                title={t('deleteUser')}
                               >
                                 <TrashIcon className="w-5 h-5" />
                               </button>
@@ -1392,26 +1317,26 @@ export default function UserManagementPage() {
                       disabled={currentPage === 1}
                       className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
+                      {t('previous')}
                     </button>
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
                       className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Next
+                      {t('next')}
                     </button>
                   </div>
                   <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <p className="text-sm text-gray-700">
-                        Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                        <span className="font-medium">{Math.min(currentPage * pageSize, totalUsers)}</span> of{' '}
-                        <span className="font-medium">{totalUsers}</span> results
+                        {t('showing')} <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> {t('to')}{' '}
+                        <span className="font-medium">{Math.min(currentPage * pageSize, totalUsers)}</span> {t('of')}{' '}
+                        <span className="font-medium">{totalUsers}</span> {t('results')}
                       </p>
                       <div className="flex items-center gap-2">
                         <label htmlFor="pageSize" className="text-sm text-gray-700">
-                          Per page:
+                          {t('perPage')}:
                         </label>
                         <select
                           id="pageSize"
@@ -1437,7 +1362,7 @@ export default function UserManagementPage() {
                           disabled={currentPage === 1}
                           className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Previous</span>
+                          <span className="sr-only">{t('previous')}</span>
                           <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
                         </button>
                         
@@ -1474,7 +1399,7 @@ export default function UserManagementPage() {
                           disabled={currentPage === totalPages}
                           className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Next</span>
+                          <span className="sr-only">{t('next')}</span>
                           <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
                         </button>
                       </nav>
@@ -1488,11 +1413,11 @@ export default function UserManagementPage() {
 
         {/* Invite User Modal */}
         {showInviteModal && (
-          <div className="!mt-[0px] fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-[99999] flex items-center justify-center">
+          <div className="!mt-[0px] fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-[99999] flex items-start justify-center pt-20">
             <div className="relative mx-auto p-5 border-0 w-[500px] shadow-xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Invite User
+                  {t('inviteUser')}
                 </h3>
                 
                 {/* Error message inside modal */}
@@ -1506,40 +1431,40 @@ export default function UserManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        First Name *
+                        {t('firstName')} *
                       </label>
                       <input
                         type="text"
                         value={inviteForm.firstName}
                         onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="John"
+                        placeholder={tCommon('placeholder.firstName')}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Last Name *
+                        {t('lastName')} *
                       </label>
                       <input
                         type="text"
                         value={inviteForm.lastName}
                         onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="Doe"
+                        placeholder={tCommon('placeholder.lastName')}
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      {t('email')} *
                     </label>
                     <input
                       type="email"
                       value={inviteForm.email}
                       onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="john.doe@example.com"
+                      placeholder={tCommon('placeholder.email')}
                     />
                   </div>
 
@@ -1547,7 +1472,7 @@ export default function UserManagementPage() {
                   {inviteForm.role !== 'TenantAdmin' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number (E.164 format) *
+                        {t('phoneNumber')} *
                       </label>
                       <input
                         type="tel"
@@ -1556,27 +1481,27 @@ export default function UserManagementPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="+1234567890"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Must start with + and country code</p>
+                      <p className="text-xs text-gray-500 mt-1">{t('phoneNumberHint')}</p>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Entity *
+                      {t('entity')} *
                     </label>
                     <div className="border border-gray-300 rounded-lg overflow-hidden">
                       <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
                         <p className="text-xs text-gray-600">
                           {inviteForm.entityId 
-                            ? `Selected: ${findEntityById(inviteForm.entityId)?.name || 'Unknown'}`
-                            : 'Select an entity from the tree below'}
+                            ? `${t('selected')}: ${findEntityById(inviteForm.entityId)?.name || t('nA')}`
+                            : t('selectEntityFromTree')}
                         </p>
                       </div>
                       <div className="max-h-60 overflow-y-auto bg-white">
                         {entities.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
                             <BuildingOfficeIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">No entities available</p>
+                            <p className="text-sm">{t('noEntitiesAvailable')}</p>
                           </div>
                         ) : (
                           entities.map(entity => renderModalEntityNode(entity))
@@ -1588,7 +1513,7 @@ export default function UserManagementPage() {
                   {/* Info message */}
                   <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
                     <p className="text-sm text-blue-800">
-                      User will receive invitation with QR code via email for WhatsApp connection setup.
+                      {t('invitationInfo')}
                     </p>
                   </div>
                 </div>
@@ -1609,7 +1534,7 @@ export default function UserManagementPage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                   <button
                     onClick={handleInviteUser}
@@ -1619,12 +1544,12 @@ export default function UserManagementPage() {
                     {isInviting ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        Inviting...
+                        {t('inviting')}
                       </>
                     ) : (
                       <>
                         <EnvelopeIcon className="w-4 h-4 mr-2" />
-                        Send Invitation
+                        {t('sendInvitation')}
                       </>
                     )}
                   </button>
@@ -1641,7 +1566,7 @@ export default function UserManagementPage() {
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Edit User
+                    {t('editUserTitle')}
                   </h3>
                   <button
                     onClick={() => {
@@ -1665,40 +1590,40 @@ export default function UserManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        First Name *
+                        {t('firstName')} *
                       </label>
                       <input
                         type="text"
                         value={editForm.firstName}
                         onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="John"
+                        placeholder={tCommon('placeholder.firstName')}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Last Name *
+                        {t('lastName')} *
                       </label>
                       <input
                         type="text"
                         value={editForm.lastName}
                         onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="Doe"
+                        placeholder={tCommon('placeholder.lastName')}
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      {t('email')} *
                     </label>
                     <input
                       type="email"
                       value={editForm.email}
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="john.doe@example.com"
+                      placeholder={tCommon('placeholder.email')}
                     />
                   </div>
 
@@ -1706,7 +1631,7 @@ export default function UserManagementPage() {
                   {editForm.role !== 'TenantAdmin' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number (E.164 format)
+                        {t('phoneNumberOptional')}
                         {editForm.role === 'User' && ' *'}
                       </label>
                       <input
@@ -1716,27 +1641,27 @@ export default function UserManagementPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder="+1234567890"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Must start with + and country code</p>
+                      <p className="text-xs text-gray-500 mt-1">{t('phoneNumberHint')}</p>
                     </div>
                   )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Entity *
+                      {t('entity')} *
                     </label>
                     <div className="border border-gray-300 rounded-lg overflow-hidden">
                       <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
                         <p className="text-xs text-gray-600">
                           {editForm.entityId 
-                            ? `Selected: ${findEntityById(editForm.entityId)?.name || 'Unknown'}`
-                            : 'Select an entity from the tree below'}
+                            ? `${t('selected')}: ${findEntityById(editForm.entityId)?.name || t('nA')}`
+                            : t('selectEntityFromTree')}
                         </p>
                       </div>
                       <div className="max-h-60 overflow-y-auto bg-white">
                         {entities.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
                             <BuildingOfficeIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">No entities available</p>
+                            <p className="text-sm">{t('noEntitiesAvailable')}</p>
                           </div>
                         ) : (
                           entities.map(entity => renderModalEntityNode(entity))
@@ -1754,7 +1679,7 @@ export default function UserManagementPage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                   <button
                     onClick={handleEditUser}
@@ -1764,12 +1689,12 @@ export default function UserManagementPage() {
                     {isEditing ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
+                        {t('saving')}
                       </>
                     ) : (
                       <>
                         <PencilIcon className="w-4 h-4 mr-2" />
-                        Save Changes
+                        {t('saveChanges')}
                       </>
                     )}
                   </button>
@@ -1786,7 +1711,7 @@ export default function UserManagementPage() {
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      WhatsApp QR Code
+                      {t('whatsappQRCode')}
                     </h3>
                     <button
                       onClick={() => {
@@ -1830,10 +1755,10 @@ export default function UserManagementPage() {
                         className="w-48 h-48 mx-auto"
                       />
                       <div className="mt-4 text-sm text-gray-600">
-                        <p>Scan with WhatsApp to connect</p>
+                        <p>{t('scanWithWhatsApp')}</p>
                         {selectedUserQR.whatsappSession.qrCodeExpiresAt && (
                           <p className="text-xs mt-1">
-                            Expires: {new Date(selectedUserQR.whatsappSession.qrCodeExpiresAt).toLocaleString()}
+                            {t('expires')}: {new Date(selectedUserQR.whatsappSession.qrCodeExpiresAt).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -1843,8 +1768,8 @@ export default function UserManagementPage() {
                       <QrCodeIcon className="w-48 h-48 mx-auto text-gray-400" />
                       <p className="text-sm text-gray-500 mt-4">
                         {selectedUserQR.whatsappSession?.status === 'ready' 
-                          ? 'User is already connected to WhatsApp'
-                          : 'No active QR code available'}
+                          ? t('userAlreadyConnected')
+                          : t('noActiveQRCode')}
                       </p>
                     </div>
                   )}
@@ -1852,9 +1777,9 @@ export default function UserManagementPage() {
                   {/* WhatsApp Connection Status */}
                   <div className="text-left bg-gray-50 p-4 rounded-lg space-y-4">
                     <div>
-                      <h5 className="text-sm font-medium text-gray-900 mb-2">WhatsApp Connection</h5>
+                      <h5 className="text-sm font-medium text-gray-900 mb-2">{t('whatsappConnection')}</h5>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Status</span>
+                        <span className="text-sm text-gray-600">{t('status')}</span>
                         {(() => {
                           const status = selectedUserQR.whatsappSession?.status || 'disconnected';
                           const badge = getStatusBadge(status);
@@ -1867,13 +1792,13 @@ export default function UserManagementPage() {
                       </div>
                       {selectedUserQR.whatsappSession?.whatsappName && (
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-sm text-gray-600">WhatsApp Name</span>
+                          <span className="text-sm text-gray-600">{t('whatsappName')}</span>
                           <span className="text-sm text-gray-800">{selectedUserQR.whatsappSession.whatsappName}</span>
                         </div>
                       )}
                       {selectedUserQR.whatsappSession?.lastActivityAt && (
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-sm text-gray-600">Last Activity</span>
+                          <span className="text-sm text-gray-600">{t('lastActivity')}</span>
                           <span className="text-sm text-gray-800">
                             {new Date(selectedUserQR.whatsappSession.lastActivityAt).toLocaleString()}
                           </span>
@@ -1883,28 +1808,28 @@ export default function UserManagementPage() {
 
                     {selectedUserQR.whatsappSession?.status === 'ready' && (
                       <div>
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">Message Statistics</h5>
+                        <h5 className="text-sm font-medium text-gray-900 mb-2">{t('messageStatistics')}</h5>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="bg-green-50 p-2 rounded">
-                            <div className="text-xs text-green-600">Sent</div>
+                            <div className="text-xs text-green-600">{t('sent')}</div>
                             <div className="text-sm font-medium text-green-800">
                               {selectedUserQR.whatsappSession.messagesSent}
                             </div>
                           </div>
                           <div className="bg-blue-50 p-2 rounded">
-                            <div className="text-xs text-blue-600">Received</div>
+                            <div className="text-xs text-blue-600">{t('received')}</div>
                             <div className="text-sm font-medium text-blue-800">
                               {selectedUserQR.whatsappSession.messagesReceived}
                             </div>
                           </div>
                           <div className="bg-purple-50 p-2 rounded">
-                            <div className="text-xs text-purple-600">Delivered</div>
+                            <div className="text-xs text-purple-600">{t('delivered')}</div>
                             <div className="text-sm font-medium text-purple-800">
                               {selectedUserQR.whatsappSession.messagesDelivered}
                             </div>
                           </div>
                           <div className="bg-red-50 p-2 rounded">
-                            <div className="text-xs text-red-600">Failed</div>
+                            <div className="text-xs text-red-600">{t('failed')}</div>
                             <div className="text-sm font-medium text-red-800">
                               {selectedUserQR.whatsappSession.messagesFailed}
                             </div>
@@ -1920,7 +1845,7 @@ export default function UserManagementPage() {
                     onClick={() => setShowQRModal(false)}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Close
+                    {t('close')}
                   </button>
                   {selectedUserQR.whatsappSession?.status !== 'ready' && (
                     <button
@@ -1969,12 +1894,12 @@ export default function UserManagementPage() {
                       {isRegeneratingQR ? (
                         <>
                           <ArrowPathIcon className="w-4 h-4 inline mr-2 animate-spin" />
-                          Generating...
+                          {t('generating')}
                         </>
                       ) : (
                         <>
                           <ArrowPathIcon className="w-4 h-4 inline mr-2" />
-                          Generate New QR Code
+                          {t('generateNewQRCode')}
                         </>
                       )}
                     </button>
@@ -1992,7 +1917,7 @@ export default function UserManagementPage() {
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Bulk Upload Users
+                    {t('bulkUploadUsers')}
                   </h3>
                   <button
                     onClick={() => {
@@ -2018,12 +1943,12 @@ export default function UserManagementPage() {
                   <div className="space-y-4">
                     {/* Instructions */}
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">Instructions</h4>
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">{t('instructions')}</h4>
                       <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                        <li>Download the template file to see the required format</li>
-                        <li>Column format: No | E164 Phone | First Name | Last Name | Email (optional) | Entity Path...</li>
-                        <li>Entity Path: List entity names from root to target (e.g., Entity 1, Entity 2, Company 1)</li>
-                        <li>Supported formats: Excel (.xlsx, .xls) or CSV (.csv)</li>
+                        <li>{t('downloadTemplateDesc1')}</li>
+                        <li>{t('downloadTemplateDesc2')}</li>
+                        <li>{t('downloadTemplateDesc3')}</li>
+                        <li>{t('downloadTemplateDesc4')}</li>
                       </ul>
                     </div>
 
@@ -2033,13 +1958,13 @@ export default function UserManagementPage() {
                       className="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                     >
                       <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-                      Download Template
+                      {t('downloadTemplate')}
                     </button>
 
                     {/* File Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Upload File *
+                        {t('uploadFile')} *
                       </label>
                       <input
                         type="file"
@@ -2055,7 +1980,7 @@ export default function UserManagementPage() {
                       />
                       {bulkUploadFile && (
                         <p className="text-sm text-gray-600 mt-1">
-                          Selected: {bulkUploadFile.name}
+                          {t('selectedFile')}: {bulkUploadFile.name}
                         </p>
                       )}
                     </div>
@@ -2065,11 +1990,11 @@ export default function UserManagementPage() {
                     {/* Results Summary */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                        <div className="text-sm text-green-600">Success</div>
+                        <div className="text-sm text-green-600">{t('success')}</div>
                         <div className="text-2xl font-bold text-green-800">{bulkUploadResults.success}</div>
                       </div>
                       <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                        <div className="text-sm text-red-600">Failed</div>
+                        <div className="text-sm text-red-600">{t('failed')}</div>
                         <div className="text-2xl font-bold text-red-800">{bulkUploadResults.failed}</div>
                       </div>
                     </div>
@@ -2077,7 +2002,7 @@ export default function UserManagementPage() {
                     {/* Failed Records */}
                     {bulkUploadResults.errors && bulkUploadResults.errors.length > 0 && (
                       <div className="max-h-60 overflow-y-auto">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Failed Records</h4>
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">{t('failedRecords')}</h4>
                         <div className="space-y-2">
                           {bulkUploadResults.errors.map((err: any, idx: number) => (
                             <div key={idx} className="bg-red-50 border border-red-200 rounded-md p-3">
@@ -2103,7 +2028,7 @@ export default function UserManagementPage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    {bulkUploadResults ? 'Close' : 'Cancel'}
+                    {bulkUploadResults ? t('close') : tCommon('cancel')}
                   </button>
                   {!bulkUploadResults && (
                     <button
@@ -2114,12 +2039,12 @@ export default function UserManagementPage() {
                       {isBulkUploading ? (
                         <>
                           <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                          Uploading...
+                          {t('uploading')}
                         </>
                       ) : (
                         <>
                           <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-                          Upload Users
+                          {t('uploadUsers')}
                         </>
                       )}
                     </button>

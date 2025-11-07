@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useMessageTranslation, translateApiError } from '@/lib/utils/messageTranslator';
 import { 
   EyeIcon, 
   EyeSlashIcon,
@@ -19,6 +20,7 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
+  const translateMessage = useMessageTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +51,9 @@ export default function LoginPage() {
       }, 500);
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Invalid email or password. Please try again.');
+      // Translate error message if it's a known message key
+      const translatedError = translateApiError(err.message || 'Invalid email or password. Please try again.', translateMessage);
+      setError(translatedError);
     } finally {
       setIsLoading(false);
     }

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   PlusIcon,
   UserIcon,
@@ -69,6 +70,9 @@ interface InviteManagerForm {
 export default function MonitoringManagersPage() {
   const { user: currentUser } = useAuth();
   const { canManageUsers } = usePermissions();
+  const t = useTranslation('managers');
+  const tCommon = useTranslation('common');
+  const tUsers = useTranslation('users');
   const [managers, setManagers] = useState<User[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -617,9 +621,9 @@ export default function MonitoringManagersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Monitoring Managers</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
             <p className="mt-2 text-sm text-gray-700">
-              Manage monitoring managers and their access to entity structure
+              {t('description')}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -632,7 +636,7 @@ export default function MonitoringManagersPage() {
               }`}
             >
               <BuildingOfficeIcon className="w-4 h-4 mr-2" />
-              Entity Structure
+              {t('entityStructure')}
             </button>
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -643,14 +647,14 @@ export default function MonitoringManagersPage() {
               }`}
             >
               <FunnelIcon className="w-4 h-4 mr-2" />
-              Filters
+              {t('filters')}
             </button>
             <button
               onClick={() => setShowBulkUploadModal(true)}
               className="inline-flex items-center px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
             >
               <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-              Bulk Upload
+              {t('bulkUpload')}
             </button>
             <button
               onClick={() => {
@@ -665,7 +669,7 @@ export default function MonitoringManagersPage() {
               className="inline-flex items-center px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
-              Add Manager
+              {t('addManager')}
             </button>
           </div>
         </div>
@@ -690,8 +694,8 @@ export default function MonitoringManagersPage() {
                         <BuildingOfficeIcon className="w-5 h-5 text-primary-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Entity Structure</h3>
-                        <p className="text-sm text-gray-600">Navigate and filter</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{t('entityStructure')}</h3>
+                        <p className="text-sm text-gray-600">{t('navigateAndFilter')}</p>
                       </div>
                     </div>
                     {selectedEntityPath && (
@@ -699,7 +703,7 @@ export default function MonitoringManagersPage() {
                         onClick={() => selectEntityPath('')}
                         className="text-xs text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
                       >
-                        Clear
+                        {t('clear')}
                       </button>
                     )}
                   </div>
@@ -718,7 +722,7 @@ export default function MonitoringManagersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={`text-sm font-medium ${!selectedEntityPath ? 'text-primary-900' : 'text-gray-900'}`}>
-                          All Managers
+                          {t('allManagers')}
                         </span>
                       </div>
                     </div>
@@ -729,8 +733,8 @@ export default function MonitoringManagersPage() {
                     {entities.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                        <p className="text-sm">No entities found</p>
-                        <p className="text-xs mt-1">Create entities to organize managers</p>
+                        <p className="text-sm">{t('noEntitiesFound')}</p>
+                        <p className="text-xs mt-1">{t('createEntitiesToOrganize')}</p>
                       </div>
                     ) : (
                       entities.map(entity => renderEntityNode(entity))
@@ -747,7 +751,7 @@ export default function MonitoringManagersPage() {
             {showAdvancedFilters && (
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('filters')}</h3>
                   <button
                     onClick={() => {
                       setSearchQuery('');
@@ -755,20 +759,20 @@ export default function MonitoringManagersPage() {
                     }}
                     className="text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md transition-colors"
                   >
-                    Clear All Filters
+                    {t('clearAllFilters')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Search */}
                   <div className="lg:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Search Managers
+                      {t('searchManagers')}
                     </label>
                     <div className="relative">
                       <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search by name or email..."
+                        placeholder={t('searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -787,13 +791,13 @@ export default function MonitoringManagersPage() {
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <UserIcon className="w-5 h-5 text-blue-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Monitoring Managers</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{t('managers')}</h3>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-sm text-gray-600">
-                      <span className="font-medium">{filteredManagers.length}</span> managers
+                      <span className="font-medium">{filteredManagers.length}</span> {t('manager').toLowerCase()}{filteredManagers.length !== 1 ? 's' : ''}
                       {filteredManagers.length !== managers.length && (
-                        <span className="text-gray-500"> of {managers.length}</span>
+                        <span className="text-gray-500"> {t('of')} {managers.length}</span>
                       )}
                     </div>
                   </div>
@@ -805,19 +809,19 @@ export default function MonitoringManagersPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Manager
+                        {t('manager')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
+                        {t('email')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Entity
+                        {t('entity')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        {t('status')}
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        {t('actions')}
                       </th>
                     </tr>
                   </thead>
@@ -826,7 +830,7 @@ export default function MonitoringManagersPage() {
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                           <UserIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p>No managers found</p>
+                          <p>{t('noManagersFound')}</p>
                         </td>
                       </tr>
                     ) : (
@@ -843,7 +847,7 @@ export default function MonitoringManagersPage() {
                                 <div className="text-sm font-medium text-gray-900">
                                   {manager.firstName} {manager.lastName}
                                 </div>
-                                <div className="text-xs text-gray-500">Manager</div>
+                                <div className="text-xs text-gray-500">{t('manager')}</div>
                               </div>
                             </div>
                           </td>
@@ -852,7 +856,7 @@ export default function MonitoringManagersPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-500">
-                              {manager.entityId?.name || 'N/A'}
+                              {manager.entityId?.name || t('nA')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -870,7 +874,7 @@ export default function MonitoringManagersPage() {
                             <button
                               onClick={() => deleteManager(manager._id, `${manager.firstName} ${manager.lastName}`)}
                               className="text-red-600 hover:text-red-900"
-                              title="Delete manager"
+                              title={t('deleteManager')}
                             >
                               <TrashIcon className="w-5 h-5" />
                             </button>
@@ -891,26 +895,26 @@ export default function MonitoringManagersPage() {
                       disabled={currentPage === 1}
                       className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
+                      {t('previous')}
                     </button>
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
                       className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Next
+                      {t('next')}
                     </button>
                   </div>
                   <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <p className="text-sm text-gray-700">
-                        Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                        <span className="font-medium">{Math.min(currentPage * pageSize, totalManagers)}</span> of{' '}
-                        <span className="font-medium">{totalManagers}</span> results
+                        {t('showing')} <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> {t('to')}{' '}
+                        <span className="font-medium">{Math.min(currentPage * pageSize, totalManagers)}</span> {t('of')}{' '}
+                        <span className="font-medium">{totalManagers}</span> {t('results')}
                       </p>
                       <div className="flex items-center gap-2">
                         <label htmlFor="pageSize" className="text-sm text-gray-700">
-                          Per page:
+                          {t('perPage')}:
                         </label>
                         <select
                           id="pageSize"
@@ -936,7 +940,7 @@ export default function MonitoringManagersPage() {
                           disabled={currentPage === 1}
                           className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Previous</span>
+                          <span className="sr-only">{t('previous')}</span>
                           <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
                         </button>
 
@@ -973,7 +977,7 @@ export default function MonitoringManagersPage() {
                           disabled={currentPage === totalPages}
                           className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Next</span>
+                          <span className="sr-only">{t('next')}</span>
                           <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
                         </button>
                       </nav>
@@ -991,7 +995,7 @@ export default function MonitoringManagersPage() {
             <div className="relative mx-auto p-5 border-0 w-[500px] shadow-xl rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Add Monitoring Manager
+                  {t('addMonitoringManager')}
                 </h3>
 
                 {/* Error message inside modal */}
@@ -1005,60 +1009,60 @@ export default function MonitoringManagersPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        First Name *
+                        {t('firstName')} *
                       </label>
                       <input
                         type="text"
                         value={inviteForm.firstName}
                         onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="John"
+                        placeholder={tCommon('placeholder.firstName')}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Last Name *
+                        {t('lastName')} *
                       </label>
                       <input
                         type="text"
                         value={inviteForm.lastName}
                         onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder="Doe"
+                        placeholder={tCommon('placeholder.lastName')}
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      {t('email')} *
                     </label>
                     <input
                       type="email"
                       value={inviteForm.email}
                       onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="john.doe@example.com"
+                      placeholder={tCommon('placeholder.email')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Entity *
+                      {t('entity')} *
                     </label>
                     <div className="border border-gray-300 rounded-lg overflow-hidden">
                       <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
                         <p className="text-xs text-gray-600">
                           {inviteForm.entityId
-                            ? `Selected: ${findEntityById(inviteForm.entityId)?.name || 'Unknown'}`
-                            : 'Select an entity from the tree below'}
+                            ? `${t('selected')}: ${findEntityById(inviteForm.entityId)?.name || t('nA')}`
+                            : t('selectEntityFromTree')}
                         </p>
                       </div>
                       <div className="max-h-60 overflow-y-auto bg-white">
                         {entities.length === 0 ? (
                           <div className="text-center py-8 text-gray-500">
                             <BuildingOfficeIcon className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm">No entities available</p>
+                            <p className="text-sm">{t('noEntitiesAvailable')}</p>
                           </div>
                         ) : (
                           entities.map(entity => renderModalEntityNode(entity))
@@ -1070,7 +1074,7 @@ export default function MonitoringManagersPage() {
                   {/* Info message */}
                   <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
                     <p className="text-sm text-blue-800">
-                      Manager will receive invitation via email with login credentials and access to monitor their assigned entity structure.
+                      {t('invitationInfo')}
                     </p>
                   </div>
                 </div>
@@ -1089,7 +1093,7 @@ export default function MonitoringManagersPage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                   <button
                     onClick={handleInviteManager}
@@ -1099,12 +1103,12 @@ export default function MonitoringManagersPage() {
                     {isInviting ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        Inviting...
+                        {t('inviting')}
                       </>
                     ) : (
                       <>
                         <EnvelopeIcon className="w-4 h-4 mr-2" />
-                        Send Invitation
+                        {t('sendInvitation')}
                       </>
                     )}
                   </button>
@@ -1121,7 +1125,7 @@ export default function MonitoringManagersPage() {
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Bulk Upload Managers
+                    {t('bulkUploadManagers')}
                   </h3>
                   <button
                     onClick={() => {
@@ -1147,12 +1151,12 @@ export default function MonitoringManagersPage() {
                   <div className="space-y-4">
                     {/* Instructions */}
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">Instructions</h4>
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">{t('instructions')}</h4>
                       <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                        <li>Download the template file to see the required format</li>
-                        <li>Column format: No | First Name | Last Name | Email | Entity Path...</li>
-                        <li>Entity Path: List entity names from root to target (e.g., 2N5 Global, Executive Office)</li>
-                        <li>Supported formats: Excel (.xlsx, .xls) or CSV (.csv)</li>
+                        <li>{t('downloadTemplateDesc1')}</li>
+                        <li>{t('downloadTemplateDesc2')}</li>
+                        <li>{t('downloadTemplateDesc3')}</li>
+                        <li>{t('downloadTemplateDesc4')}</li>
                       </ul>
                     </div>
 
@@ -1162,13 +1166,13 @@ export default function MonitoringManagersPage() {
                       className="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                     >
                       <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-                      Download Template
+                      {t('downloadTemplate')}
                     </button>
 
                     {/* File Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Upload File *
+                        {t('uploadFile')} *
                       </label>
                       <input
                         type="file"
@@ -1184,7 +1188,7 @@ export default function MonitoringManagersPage() {
                       />
                       {bulkUploadFile && (
                         <p className="text-sm text-gray-600 mt-1">
-                          Selected: {bulkUploadFile.name}
+                          {t('selectedFile')}: {bulkUploadFile.name}
                         </p>
                       )}
                     </div>
@@ -1194,11 +1198,11 @@ export default function MonitoringManagersPage() {
                     {/* Results Summary */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                        <div className="text-sm text-green-600">Success</div>
+                        <div className="text-sm text-green-600">{t('success')}</div>
                         <div className="text-2xl font-bold text-green-800">{bulkUploadResults.success}</div>
                       </div>
                       <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                        <div className="text-sm text-red-600">Failed</div>
+                        <div className="text-sm text-red-600">{t('failed')}</div>
                         <div className="text-2xl font-bold text-red-800">{bulkUploadResults.failed}</div>
                       </div>
                     </div>
@@ -1206,7 +1210,7 @@ export default function MonitoringManagersPage() {
                     {/* Failed Records */}
                     {bulkUploadResults.errors && bulkUploadResults.errors.length > 0 && (
                       <div className="max-h-60 overflow-y-auto">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Failed Records</h4>
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">{t('failedRecords')}</h4>
                         <div className="space-y-2">
                           {bulkUploadResults.errors.map((err: any, idx: number) => (
                             <div key={idx} className="bg-red-50 border border-red-200 rounded-md p-3">
@@ -1232,7 +1236,7 @@ export default function MonitoringManagersPage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    {bulkUploadResults ? 'Close' : 'Cancel'}
+                    {bulkUploadResults ? t('close') : tCommon('cancel')}
                   </button>
                   {!bulkUploadResults && (
                     <button
@@ -1243,12 +1247,12 @@ export default function MonitoringManagersPage() {
                       {isBulkUploading ? (
                         <>
                           <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                          Uploading...
+                          {t('uploading')}
                         </>
                       ) : (
                         <>
                           <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-                          Upload Managers
+                          {t('uploadManagers')}
                         </>
                       )}
                     </button>

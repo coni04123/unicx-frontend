@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   PlusIcon,
   BuildingOfficeIcon,
@@ -69,6 +70,8 @@ interface CreateEntityTypeForm {
 
 export default function EntityStructurePage() {
   const { user } = useAuth();
+  const t = useTranslation('entities');
+  const tCommon = useTranslation('common');
   const [entities, setEntities] = useState<Entity[]>([]);
   const [entityTypes, setEntityTypes] = useState<CustomEntityType[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -274,12 +277,12 @@ export default function EntityStructurePage() {
               )}
               {!entity.parentId && (
                 <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                  Root
+                  {t('root')}
                 </span>
               )}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {entity.path} • Level: {entity.level} • Created: {new Date(entity.createdAt).toLocaleDateString()}
+              {entity.path} • {t('level')}: {entity.level} • {t('created')}: {new Date(entity.createdAt).toLocaleDateString()}
             </div>
           </div>
 
@@ -290,21 +293,21 @@ export default function EntityStructurePage() {
                 <button
                   onClick={() => openCreateChildModal(entity)}
                   className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
-                  title="Add child entity"
+                  title={t('addChildEntityTooltip')}
                 >
                   <PlusIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => openEditModal(entity)}
                   className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit entity"
+                  title={t('editEntityTooltip')}
                 >
                   <PencilIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => openDeleteModal(entity._id, entity.name)}
                   className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                  title="Delete entity"
+                  title={t('deleteEntityTooltip')}
                 >
                   <TrashIcon className="w-4 h-4" />
                 </button>
@@ -681,12 +684,12 @@ export default function EntityStructurePage() {
               )}
               {!entity.parentId && (
                 <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                  Root
+                  {t('root')}
                 </span>
               )}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              Level: {entity.level} • Created: {new Date(entity.createdAt).toLocaleDateString()}
+              {t('level')}: {entity.level} • {t('created')}: {new Date(entity.createdAt).toLocaleDateString()}
             </div>
           </div>
 
@@ -697,21 +700,21 @@ export default function EntityStructurePage() {
                 <button
                   onClick={() => openCreateChildModal(entity)}
                   className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
-                  title="Add child entity"
+                  title={t('addChildEntityTooltip')}
                 >
                   <PlusIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => openEditModal(entity)}
                   className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit entity name"
+                  title={t('editEntityNameTooltip')}
                 >
                   <PencilIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => openDeleteModal(entity._id, entity.name)}
                   className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                  title="Delete entity"
+                  title={t('deleteEntityTooltip')}
                 >
                   <TrashIcon className="w-4 h-4" />
                 </button>
@@ -736,9 +739,9 @@ export default function EntityStructurePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-2xl font-bold text-gray-900">Entity Structure</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('entityStructure')}</h1>
           <p className="mt-2 text-sm text-gray-700">
-              Manage your elastic entity hierarchy with unlimited nesting levels. Create root entities, companies, and departments.
+              {t('description')}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -748,14 +751,14 @@ export default function EntityStructurePage() {
               className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
             >
               <ArrowPathIcon className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('refresh')}
             </button>
             <button
               onClick={openCreateRootModal}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
-              Root Entity
+              {t('rootEntity')}
             </button>
           </div>
         </div>
@@ -771,10 +774,10 @@ export default function EntityStructurePage() {
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Hierarchical Structure</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('hierarchicalStructure')}</h3>
               {searchQuery.trim() && (
                 <span className="text-sm text-gray-500">
-                  {filteredEntities.length} {filteredEntities.length === 1 ? 'result' : 'results'}
+                  {filteredEntities.length} {filteredEntities.length === 1 ? t('result') : t('results')}
                 </span>
               )}
             </div>
@@ -788,7 +791,7 @@ export default function EntityStructurePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Search entities by name or type..."
+                placeholder={t('searchPlaceholder')}
               />
               {searchQuery && (
                 <button
@@ -804,26 +807,26 @@ export default function EntityStructurePage() {
             {isLoading ? (
               <div className="text-center py-8 text-gray-500">
                 <ArrowPathIcon className="w-8 h-8 animate-spin mx-auto mb-2" />
-                Loading entities...
+                {t('loadingEntities')}
               </div>
             ) : hierarchicalDisplayEntities.length === 0 && !searchQuery.trim() ? (
               <div className="text-center py-8 text-gray-500">
                 <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-lg font-medium">No entities yet</p>
-                <p className="text-sm mt-1">Create your first root entity to get started</p>
+                <p className="text-lg font-medium">{t('noEntitiesYet')}</p>
+                <p className="text-sm mt-1">{t('createFirstRootEntity')}</p>
                 <button
                   onClick={openCreateRootModal}
                   className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                 >
                   <PlusIcon className="w-4 h-4 mr-2" />
-                  Create Root Entity
+                  {t('createRootEntity')}
                 </button>
               </div>
             ) : searchQuery.trim() && filteredEntities.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-lg font-medium">No entities found</p>
-                <p className="text-sm mt-1">Try adjusting your search: "{searchQuery}"</p>
+                <p className="text-lg font-medium">{t('noEntitiesFound')}</p>
+                <p className="text-sm mt-1">{t('tryAdjustingSearch').replace('{query}', searchQuery)}</p>
               </div>
             ) : searchQuery.trim() ? (
               // Flat list for search results
@@ -839,11 +842,11 @@ export default function EntityStructurePage() {
 
         {/* Create Entity Modal */}
         {showCreateModal && (
-          <div className="fixed top-0 left-0 right-0 bottom-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-screen w-screen z-[9999] flex items-start justify-center pt-20">
+          <div className="!mt-[0px] fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full flex items-start justify-center pt-20 ">
             <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white mb-20">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  {createForm.isRootEntity ? 'Create Root Entity' : 'Add Child Entity'}
+                  {createForm.isRootEntity ? t('createRootEntityTitle') : t('addChildEntity')}
                 </h3>
                 
                 {/* Error message inside modal */}
@@ -857,20 +860,20 @@ export default function EntityStructurePage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Entity Name *
+                      {t('entityName')} *
                     </label>
                     <input
                       type="text"
                       value={createForm.name}
                       onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., Entity X, Acme Corp, Sales Dept"
+                      placeholder={t('entityNamePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Entity Type *
+                      {t('entityType')} *
                     </label>
                     <select
                       value={createForm.type}
@@ -884,10 +887,10 @@ export default function EntityStructurePage() {
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      <option value="entity">Entity</option>
-                      <option value="company">Company</option>
-                      <option value="department">Department</option>
-                      <option value="custom">Custom</option>
+                      <option value="entity">{t('entity')}</option>
+                      <option value="company">{t('company')}</option>
+                      <option value="department">{t('department')}</option>
+                      <option value="custom">{t('custom')}</option>
                     </select>
                   </div>
 
@@ -895,7 +898,7 @@ export default function EntityStructurePage() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-sm font-medium text-gray-700">
-                          Custom Entity Type *
+                          {t('customEntityType')} *
                         </label>
                         <button
                           type="button"
@@ -905,7 +908,7 @@ export default function EntityStructurePage() {
                           }}
                           className="text-xs text-primary-600 hover:text-primary-700"
                         >
-                          + Create New
+                          + {t('createNew')}
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
@@ -915,7 +918,7 @@ export default function EntityStructurePage() {
                             onChange={(e) => setCreateForm({ ...createForm, customEntityTypeId: e.target.value })}
                             className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
                           >
-                            <option value="">Select custom type...</option>
+                            <option value="">{t('selectCustomType')}</option>
                             {entityTypes.map((et) => (
                               <option key={et._id} value={et._id}>
                                 {et.title}
@@ -934,7 +937,7 @@ export default function EntityStructurePage() {
                             type="button"
                             onClick={() => openEditEntityTypeModal(createForm.customEntityTypeId!)}
                             className="px-3 py-2 text-xs text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-md transition-colors flex items-center"
-                            title="Edit entity type"
+                            title={t('editEntityType')}
                           >
                             <PencilIcon className="w-4 h-4" />
                           </button>
@@ -946,10 +949,10 @@ export default function EntityStructurePage() {
                   {!createForm.isRootEntity && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Parent Entity
+                        {t('parentEntity')}
                       </label>
                       <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
-                        {entities.find(e => e._id === createForm.parentId)?.name || 'Unknown'}
+                        {entities.find(e => e._id === createForm.parentId)?.name || t('unknown')}
                       </div>
                     </div>
                   )}
@@ -963,7 +966,7 @@ export default function EntityStructurePage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                   <button
                     onClick={handleCreateEntity}
@@ -973,10 +976,10 @@ export default function EntityStructurePage() {
                     {isCreating ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
+                        {t('creating')}
                       </>
                     ) : (
-                      'Create Entity'
+                      t('createEntity')
                     )}
                   </button>
                 </div>
@@ -991,7 +994,7 @@ export default function EntityStructurePage() {
             <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white mb-20">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Edit Entity
+                  {t('editEntity')}
                 </h3>
                 
                 {/* Error message inside modal */}
@@ -1004,20 +1007,20 @@ export default function EntityStructurePage() {
                 <div className="space-y-4">
               <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Entity Name *
+                      {t('entityName')} *
                     </label>
                     <input
                       type="text"
                       value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="e.g., Entity X, Acme Corp, Sales Dept"
+                      placeholder={t('entityNamePlaceholder')}
                     />
               </div>
 
               <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Entity Type *
+                      {t('entityType')} *
                     </label>
                     <select
                       value={editForm.type}
@@ -1031,10 +1034,10 @@ export default function EntityStructurePage() {
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      <option value="entity">Entity</option>
-                      <option value="company">Company</option>
-                      <option value="department">Department</option>
-                      <option value="custom">Custom</option>
+                      <option value="entity">{t('entity')}</option>
+                      <option value="company">{t('company')}</option>
+                      <option value="department">{t('department')}</option>
+                      <option value="custom">{t('custom')}</option>
                     </select>
               </div>
 
@@ -1042,7 +1045,7 @@ export default function EntityStructurePage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-sm font-medium text-gray-700">
-                      Custom Entity Type *
+                      {t('customEntityType')} *
                     </label>
                     <button
                       type="button"
@@ -1052,7 +1055,7 @@ export default function EntityStructurePage() {
                       }}
                       className="text-xs text-primary-600 hover:text-primary-700"
                     >
-                      + Create New
+                      + {t('createNew')}
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1062,7 +1065,7 @@ export default function EntityStructurePage() {
                         onChange={(e) => setEditForm({ ...editForm, customEntityTypeId: e.target.value })}
                         className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
                       >
-                        <option value="">Select custom type...</option>
+                        <option value="">{t('selectCustomType')}</option>
                         {entityTypes.map((et) => (
                           <option key={et._id} value={et._id}>
                             {et.title}
@@ -1099,7 +1102,7 @@ export default function EntityStructurePage() {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                   >
-                    Cancel
+                    {tCommon('cancel')}
                   </button>
                   <button
                     onClick={handleEditEntity}
@@ -1109,10 +1112,10 @@ export default function EntityStructurePage() {
                     {isEditing ? (
                       <>
                         <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                        Updating...
+                        {t('updating')}
                       </>
                     ) : (
-                      'Update Entity'
+                      t('updateEntity')
                     )}
                   </button>
               </div>
@@ -1127,7 +1130,7 @@ export default function EntityStructurePage() {
              <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white mb-20">
                <div className="mt-3">
                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                   Delete Entity
+                   {t('deleteEntity')}
                  </h3>
                  
                  {/* Error message inside modal */}
@@ -1139,7 +1142,7 @@ export default function EntityStructurePage() {
                  
                  <div className="mb-6">
                    <p className="text-gray-700">
-                     Are you sure you want to delete "{deleteEntityName}"? This action cannot be undone.
+                     {t('deleteConfirm').replace('{name}', deleteEntityName)}
                    </p>
                  </div>
 
@@ -1151,7 +1154,7 @@ export default function EntityStructurePage() {
                      }}
                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                    >
-                     Cancel
+                     {tCommon('cancel')}
                    </button>
                    <button
                      onClick={handleDeleteEntity}
@@ -1161,10 +1164,10 @@ export default function EntityStructurePage() {
                      {isDeleting ? (
                        <>
                          <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
-                         Deleting...
+                         {t('deleting')}
                        </>
                      ) : (
-                       'Delete Entity'
+                       t('deleteEntity')
                      )}
                    </button>
                  </div>
@@ -1186,10 +1189,10 @@ export default function EntityStructurePage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900">
-                        Create Custom Entity Type
+                        {t('createCustomEntityType')}
                       </h3>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        Define a new entity classification
+                        {t('defineNewClassification')}
                       </p>
                     </div>
                   </div>
@@ -1221,24 +1224,24 @@ export default function EntityStructurePage() {
                   {/* Title Field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Title <span className="text-red-500">*</span>
+                      {t('entityTypeTitle')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={createEntityTypeForm.title}
                       onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
-                      placeholder="e.g., Team, Division, Region"
+                      placeholder={t('titlePlaceholder')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500">
-                      This name will appear when selecting entity types
+                      {t('titleDescription')}
                     </p>
                   </div>
 
                   {/* Color Field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Color <span className="text-red-500">*</span>
+                      {t('color')} <span className="text-red-500">*</span>
                     </label>
                     <div className="flex items-center space-x-3">
                       <div className="relative">
@@ -1258,7 +1261,7 @@ export default function EntityStructurePage() {
                         value={createEntityTypeForm.color}
                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
                         className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all font-mono text-sm"
-                        placeholder="#14a800"
+                        placeholder={t('colorPlaceholder')}
                       />
                     </div>
                     <div className="mt-3 flex items-center space-x-2">
@@ -1267,12 +1270,12 @@ export default function EntityStructurePage() {
                           className="w-full h-full flex items-center justify-center text-xs font-medium text-white"
                           style={{ backgroundColor: createEntityTypeForm.color }}
                         >
-                          Preview
+                          {t('preview')}
                         </div>
                       </div>
                     </div>
                     <p className="mt-1.5 text-xs text-gray-500">
-                      This color will be used for entity type indicators
+                      {t('colorDescription')}
                     </p>
                   </div>
                 </div>
@@ -1288,7 +1291,7 @@ export default function EntityStructurePage() {
                   }}
                   className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all"
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </button>
                 <button
                   onClick={handleCreateEntityType}
@@ -1298,12 +1301,12 @@ export default function EntityStructurePage() {
                   {isCreatingEntityType ? (
                     <>
                       <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                      <span>Creating...</span>
+                      <span>{t('creating')}</span>
                     </>
                   ) : (
                     <>
                       <CheckIcon className="w-4 h-4" />
-                      <span>Create Type</span>
+                      <span>{t('createType')}</span>
                     </>
                   )}
                 </button>
@@ -1325,10 +1328,10 @@ export default function EntityStructurePage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900">
-                        Edit Custom Entity Type
+                        {t('editCustomEntityType')}
                       </h3>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        Update entity type details
+                        {t('updateEntityTypeDetails')}
                       </p>
                     </div>
                   </div>
@@ -1361,24 +1364,24 @@ export default function EntityStructurePage() {
                   {/* Title Field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Title <span className="text-red-500">*</span>
+                      {t('entityTypeTitle')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={createEntityTypeForm.title}
                       onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, title: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all"
-                      placeholder="e.g., Team, Division, Region"
+                      placeholder={t('titlePlaceholder')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500">
-                      This name will appear when selecting entity types
+                      {t('titleDescription')}
                     </p>
                   </div>
 
                   {/* Color Field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Color <span className="text-red-500">*</span>
+                      {t('color')} <span className="text-red-500">*</span>
                     </label>
                     <div className="flex items-center space-x-3">
                       <div className="relative">
@@ -1398,7 +1401,7 @@ export default function EntityStructurePage() {
                         value={createEntityTypeForm.color}
                         onChange={(e) => setCreateEntityTypeForm({ ...createEntityTypeForm, color: e.target.value })}
                         className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all font-mono text-sm"
-                        placeholder="#14a800"
+                        placeholder={t('colorPlaceholder')}
                       />
                     </div>
                     <div className="mt-3 flex items-center space-x-2">
@@ -1407,12 +1410,12 @@ export default function EntityStructurePage() {
                           className="w-full h-full flex items-center justify-center text-xs font-medium text-white"
                           style={{ backgroundColor: createEntityTypeForm.color }}
                         >
-                          Preview
+                          {t('preview')}
                         </div>
                       </div>
                     </div>
                     <p className="mt-1.5 text-xs text-gray-500">
-                      This color will be used for entity type indicators
+                      {t('colorDescription')}
                     </p>
                   </div>
                 </div>
@@ -1429,7 +1432,7 @@ export default function EntityStructurePage() {
                   }}
                   className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all"
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </button>
                 <button
                   onClick={handleEditEntityType}
@@ -1439,12 +1442,12 @@ export default function EntityStructurePage() {
                   {isEditingEntityType ? (
                     <>
                       <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                      <span>Updating...</span>
+                      <span>{t('updating')}</span>
                     </>
                   ) : (
                     <>
                       <CheckIcon className="w-4 h-4" />
-                      <span>Update Type</span>
+                      <span>{t('updateType')}</span>
                     </>
                   )}
                 </button>

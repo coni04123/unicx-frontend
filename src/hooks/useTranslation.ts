@@ -17,7 +17,7 @@ type TranslationData = typeof en;
 const translations: Record<Language, TranslationData> = {
   en,
   es: en,  // TODO: Replace with actual Spanish translations
-  pt: en,  // TODO: Replace with actual Portuguese translations
+  pt: pt,  // Portuguese translations
   fr: en,  // TODO: Replace with actual French translations
   de: en,  // TODO: Replace with actual German translations
 };

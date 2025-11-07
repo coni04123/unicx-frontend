@@ -147,9 +147,6 @@ export default function ProfilePage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your personal information and preferences
-          </p>
         </div>
 
         {/* Success Message */}
@@ -206,7 +203,6 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>{t('personalInfo')}</CardTitle>
-                    <CardDescription>Update your personal details</CardDescription>
                   </div>
                   {!isEditing ? (
                     <Button
